@@ -1,0 +1,1748 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>台灣大哥大門市現貨查詢地圖</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============ 色票（對應台灣大哥大品牌色，可在此調整） ============ */
+:root{
+  --brand:#FF6A00; --brand-600:#E85A00; --brand-300:#FF9A4D; --brand-50:#FFF3EA; --brand-100:#FFE4CF;
+  --ink:#141414; --ink-2:#4F5257; --ink-3:#8B8E94; --ink-4:#B9BBC0;
+  --bg:#F3F3F5; --card:#FFFFFF; --card-2:#F7F7F8; --line:#ECECEF;
+  --ok:#14A35A; --ok-50:#E3F6EB; --warn:#E09400; --warn-50:#FFF4D9; --no:#9A9CA2; --no-50:#F0F0F2;
+  --shadow-sm:0 1px 2px rgba(20,20,20,.06),0 2px 8px rgba(20,20,20,.05);
+  --shadow:0 8px 28px rgba(20,20,20,.10),0 2px 6px rgba(20,20,20,.05);
+  --r-lg:24px; --r:16px; --r-sm:12px;
+  --font:"Inter","Noto Sans TC",system-ui,-apple-system,"PingFang TC",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --brand-50:#33200F; --brand-100:#4A2C12; --ink:#F4F4F5; --ink-2:#C4C6CB; --ink-3:#8E9196; --ink-4:#5C5F64;
+    --bg:#0F0F10; --card:#1A1A1C; --card-2:#232326; --line:#2C2C30;
+    --ok-50:#123121; --warn-50:#3A2C0C; --no-50:#2A2A2E;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --brand-50:#33200F; --brand-100:#4A2C12; --ink:#F4F4F5; --ink-2:#C4C6CB; --ink-3:#8E9196; --ink-4:#5C5F64;
+  --bg:#0F0F10; --card:#1A1A1C; --card-2:#232326; --line:#2C2C30;
+  --ok-50:#123121; --warn-50:#3A2C0C; --no-50:#2A2A2E;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
+button{font:inherit;cursor:pointer;color:inherit;border:none;background:none;padding:0}
+input,select{font:inherit;color:inherit}
+a{color:inherit}
+.num{font-variant-numeric:tabular-nums}
+
+/* ============ 地圖 ============ */
+.map-wrap{position:fixed;inset:0;background:#F1F0EE}
+#map{width:100%;height:100%;background:#F1F0EE}
+.leaflet-tile-pane{filter:saturate(.18) sepia(.06) brightness(.995)}
+/* 路名聚光：只在游標（手機為畫面中心）附近顯示路名，越近越清楚 */
+.lbl-pane{pointer-events:none;filter:saturate(.3)}
+.lbl-pane img{pointer-events:none}
+.area-pane{pointer-events:none}
+.area-lbl{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font:600 12px var(--font);color:#8B8E94;letter-spacing:.14em;
+  text-shadow:0 0 2px #EFEEEB,0 0 4px #EFEEEB,0 0 8px #EFEEEB;transition:opacity .2s;pointer-events:none}
+.area-lbl.city{font-size:13.5px;font-weight:800;color:#4F5257;letter-spacing:.2em}
+.leaflet-container{font-family:var(--font);background:#F1F0EE}
+.leaflet-control-attribution{font-size:10px}
+
+/* ============ 頂部 ============ */
+.topbar{position:fixed;top:16px;left:16px;right:16px;height:56px;display:flex;align-items:center;gap:12px;z-index:700;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.brand{flex:none;width:400px;height:56px;display:flex;align-items:center;gap:12px;padding:0 10px 0 10px;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}
+.logo{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#FFF3EA);display:grid;place-items:center;flex:none;box-shadow:0 3px 10px rgba(255,106,0,.22),inset 0 0 0 1px rgba(255,106,0,.08)}
+.logo svg{width:32px;height:32px;display:block;filter:drop-shadow(0 1px 1px rgba(120,40,0,.18))}
+.brand{position:relative;overflow:hidden;background:linear-gradient(115deg,var(--card) 55%,var(--brand-50))}
+.brand::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#FFD60B,#FF9B0B 18%,#FF6700 36%,#D82400 52%,#CE2874 64%,#624BEE 78%,#0EAA7D 90%,#22DDB9)}
+.brand-t{min-width:0}
+.bt-co{color:var(--bt-co,#2F2E6C)}
+.bt-app{background:linear-gradient(90deg,#FF6A00,#F73603);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bt-co{color:#C9C8F5}}
+:root[data-theme="dark"] .bt-co{color:#C9C8F5}
+
+.brand b{display:flex;align-items:baseline;gap:4px;white-space:nowrap;font-size:16.5px;font-weight:900;letter-spacing:.04em;line-height:1.25}
+.brand small{display:inline-block;font-size:11px;font-weight:600;color:var(--brand-600);background:var(--brand-50);padding:1px 8px;border-radius:99px;margin-top:1px}
+.brand small.g{color:#1a73e8;background:#e8f0fe}
+.search{flex:1;min-width:0;max-width:520px;height:56px;display:flex;align-items:center;gap:10px;padding:0 18px;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}
+.search svg{flex:none;color:var(--ink-3)}
+.search input{flex:1;min-width:0;border:none;outline:none;background:none;height:100%;font-size:15px}
+.search input::placeholder{color:var(--ink-3)}
+.top-actions{margin-left:auto;display:flex;gap:8px}
+.circle{width:56px;height:56px;border-radius:18px;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--ink)}
+.circle:hover{color:var(--brand)}
+.circle.busy svg{animation:pulse 1s ease-in-out infinite;color:var(--brand)}
+@keyframes pulse{50%{opacity:.3}}
+
+/* ============ 地圖控制 ============ */
+.mapctl{position:fixed;right:16px;bottom:24px;z-index:650;display:flex;flex-direction:column;gap:10px}
+.ctl-group{background:var(--card);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.ctl{width:48px;height:48px;display:grid;place-items:center;color:var(--ink-2);font-weight:800;font-size:13px}
+.ctl:hover{color:var(--brand);background:var(--card-2)}
+.ctl+.ctl{border-top:1px solid var(--line)}
+.ctl.on{color:#fff;background:var(--ink)}
+body.demo .g-only{display:none}
+.areaBtn{position:fixed;top:88px;left:calc(50% + 208px);transform:translateX(-50%);z-index:640;display:none;align-items:center;gap:8px;height:36px;padding:0 16px;border-radius:99px;background:rgba(255,255,255,.94);color:var(--ink-2);box-shadow:var(--shadow-sm);font-weight:600;font-size:13px;white-space:nowrap;pointer-events:none;animation:pop .2s ease}
+.areaBtn.show{display:flex}
+.areaBtn.busy{color:var(--ink-2)}
+.areaBtn.busy::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--brand);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legend{position:fixed;right:80px;bottom:24px;z-index:640;background:var(--card);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow);font-size:12.5px;font-weight:500;display:none;gap:14px}
+.legend.show{display:flex}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ============ 面板 ============ */
+.panel{position:fixed;left:16px;top:88px;bottom:16px;width:400px;z-index:680;background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.grab{display:none}
+.seg{display:flex;gap:4px;margin:14px 14px 4px;padding:4px;background:var(--card-2);border-radius:14px}
+.seg button{flex:1;height:38px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--ink-3);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm)}
+.cnt{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--brand);color:#fff;font-size:10.5px;display:inline-grid;place-items:center;font-weight:700}
+.view{flex:1;overflow:auto;min-height:0;display:none;overscroll-behavior:contain}
+.view.active{display:block}
+.view::-webkit-scrollbar{width:8px}.view::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+.pad{padding:12px 18px}
+.h-title{font-size:22px;font-weight:900;letter-spacing:.02em;margin:10px 18px 2px}
+.h-sub{font-size:13px;color:var(--ink-3);margin:0 18px 6px}
+.section-t{font-size:12px;color:var(--ink-3);font-weight:700;margin:16px 18px 8px;letter-spacing:.08em;text-transform:uppercase}
+
+/* 控制元件 */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sel{height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:0 30px 0 12px;font-size:13.5px;font-weight:500;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B8E94' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+.chip{height:34px;padding:0 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:500;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);transition:.15s}
+.chip:hover{border-color:var(--ink-4)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.btn{height:46px;padding:0 18px;border-radius:14px;background:var(--card-2);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px;transition:.15s}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.dark{background:var(--ink);color:var(--card)}
+.btn.sm{height:34px;padding:0 12px;font-size:12.5px;border-radius:10px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* 門市卡 */
+.store{display:flex;gap:14px;padding:12px;margin:0 10px;border-radius:18px;cursor:pointer;align-items:center;transition:background .15s}
+.store:hover{background:var(--card-2)}
+.store.sel-on{background:var(--brand-50)}
+.thumb{flex:none;width:60px;height:60px;border-radius:16px;background:linear-gradient(160deg,var(--brand-50),var(--card-2));display:grid;place-items:center;overflow:hidden}
+.thumb svg{width:58px;height:auto}
+.store h4{margin:0 0 4px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:12.5px;color:var(--ink-3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meta .sep{width:3px;height:3px;border-radius:50%;background:var(--ink-4)}
+.open{color:var(--ok);font-weight:600}.closed{color:var(--ink-3)}
+.addr{font-size:12px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tagline{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:7px;background:var(--card-2);color:var(--ink-2)}
+.stock{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;flex:none}
+.s-ok{background:var(--ok-50);color:var(--ok)}.s-low{background:var(--warn-50);color:var(--warn)}.s-no{background:var(--no-50);color:var(--no)}
+.empty{padding:44px 24px;text-align:center;color:var(--ink-3);font-size:14px;line-height:1.7}
+.empty .ill{width:120px;margin:0 auto 10px;opacity:.9}
+
+/* 商品 */
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 18px 20px}
+.prod{border-radius:18px;padding:12px;background:var(--card-2);text-align:left;display:flex;flex-direction:column;gap:4px;border:2px solid transparent;transition:.15s}
+.prod:hover{transform:translateY(-2px)}
+.prod.on{border-color:var(--brand);background:var(--card)}
+.pimg{height:84px;border-radius:12px;display:grid;place-items:center;font-size:38px;margin-bottom:6px;background:var(--card)}
+.prod b{font-size:14px;line-height:1.3}
+.pimg{position:relative}
+.newtag{position:absolute;top:8px;left:8px;font:800 10px var(--font);letter-spacing:.06em;color:#fff;background:var(--brand);padding:2px 7px;border-radius:99px}
+.prod .price{font-size:13px;color:var(--ink);font-weight:800}
+.prod .avail{font-size:11.5px;color:var(--ink-3)}
+.spec{margin:6px 18px 12px;padding:16px;border-radius:20px;background:var(--card-2)}
+.spec h3{margin:0;font-size:18px;font-weight:800}
+.spec .lbl{font-size:12px;color:var(--ink-3);margin:12px 0 7px;font-weight:600}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.summary div{background:var(--card);border-radius:14px;padding:10px;text-align:center}
+.summary b{display:block;font-size:22px;font-weight:800}
+.summary span{font-size:11.5px;color:var(--ink-3);font-weight:500}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--card-2);display:grid;place-items:center;flex:none}
+.iconbtn:hover{color:var(--brand)}
+
+/* 門市詳情 */
+.detail{position:absolute;inset:0;background:var(--card);z-index:20;display:none;flex-direction:column}
+.detail.show{display:flex;animation:slidein .25s ease}
+@keyframes slidein{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.d-body{overflow:auto;flex:1;overscroll-behavior:contain}
+.hero{position:relative;height:210px;background:
+  repeating-linear-gradient(30deg,transparent 0 22px,rgba(255,106,0,.07) 22px 23px),
+  repeating-linear-gradient(150deg,transparent 0 22px,rgba(255,106,0,.07) 22px 23px),
+  linear-gradient(180deg,var(--brand-50),var(--card));display:grid;place-items:end center;padding-bottom:6px}
+.hero-art svg{width:240px;height:auto;filter:drop-shadow(0 16px 18px rgba(120,60,10,.18));animation:float 4s ease-in-out infinite}
+.k-flag-hero svg{width:190px}
+@keyframes float{50%{transform:translateY(-6px)}}
+.hero .d-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between}
+.hero .iconbtn{background:var(--card);box-shadow:var(--shadow-sm)}
+.d-main{padding:4px 20px 24px}
+.d-main h2{margin:6px 0 6px;font-size:23px;font-weight:900;letter-spacing:.02em}
+.pill-flag{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--ink);padding:2px 9px;border-radius:99px}
+.queue{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.queue div{border-radius:16px;padding:12px 14px;background:var(--card-2)}
+.queue b{font-size:24px;font-weight:800;display:block;margin-top:2px}
+.queue b small{font-size:13px;font-weight:600;color:var(--ink-3);margin-left:3px}
+.queue span{font-size:12px;color:var(--ink-3);font-weight:500}
+.bar{height:5px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:9px}
+.actions{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;margin:14px 0 6px}
+.actions .btn{height:52px;font-size:13.5px}
+.kv{display:grid;grid-template-columns:20px 1fr;gap:10px 10px;font-size:14px;color:var(--ink-2);margin:16px 0;align-items:start}
+.kv svg{color:var(--ink-3);margin-top:2px}
+.inv{width:100%;border-collapse:collapse;font-size:14px}
+.inv td{padding:11px 0;border-bottom:1px solid var(--line)}
+.inv td:last-child{text-align:right}
+.hours{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;align-items:end;height:56px;margin-top:8px}
+.hours i{background:var(--brand-100);border-radius:4px 4px 1px 1px}
+.hours i.now{background:var(--brand)}
+.hrs-l{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.promo{border-radius:20px;padding:16px 18px;background:var(--ink);color:#fff;margin:16px 0;position:relative;overflow:hidden}
+.promo::after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:var(--brand);opacity:.9}
+.promo b{display:block;font-size:15px;margin-bottom:4px;position:relative;z-index:1}
+.promo span{font-size:12.5px;opacity:.8;position:relative;z-index:1;display:block;max-width:72%}
+.srcnote{font-size:11.5px;color:var(--ink-3);margin-top:16px;line-height:1.6}
+
+/* 預約 / 更多 */
+.bk{margin:10px 18px;border-radius:20px;padding:16px;background:var(--card-2)}
+.bk .big{font-size:34px;font-weight:900;color:var(--brand)}
+.feat{display:flex;gap:14px;padding:13px 18px;align-items:flex-start}
+.feat .ic{flex:none;width:42px;height:42px;border-radius:13px;background:var(--card-2);display:grid;place-items:center;font-size:20px}
+.feat b{font-size:14.5px;display:block}
+.feat p{margin:3px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.ph{font-size:10.5px;padding:1px 8px;border-radius:99px;margin-left:6px;font-weight:600;vertical-align:2px}
+.p1{background:var(--ok-50);color:var(--ok)}.p2{background:var(--warn-50);color:var(--warn)}.p3{background:var(--no-50);color:var(--ink-2)}
+.banner{margin:12px 18px;border-radius:20px;padding:18px;background:var(--brand);color:#fff}
+.banner b{font-size:17px;display:block;margin-bottom:4px}
+.banner span{font-size:12.5px;opacity:.9}
+
+/* Modal / Toast */
+.mask{position:fixed;inset:0;background:rgba(10,10,10,.45);backdrop-filter:blur(3px);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+.mask.show{display:flex}
+.modal{background:var(--card);border-radius:24px;width:100%;max-width:440px;max-height:90vh;overflow:auto;padding:22px;box-shadow:var(--shadow);animation:pop .2s ease}
+@keyframes pop{from{transform:scale(.96);opacity:0}}
+.modal h3{margin:0 0 4px;font-size:20px;font-weight:900}
+.modal .lbl{font-size:12px;color:var(--ink-3);margin:16px 0 7px;font-weight:600}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.slot{height:40px;border-radius:12px;background:var(--card-2);font-size:13px;font-weight:600}
+.slot.on{background:var(--ink);color:var(--card)}
+.slot:disabled{opacity:.3;text-decoration:line-through;cursor:not-allowed}
+.field{width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--card-2);padding:0 14px;outline:none;font-size:14px}
+.field:focus{border-color:var(--brand)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;background:var(--card-2);border-radius:14px;padding:12px 14px;margin-top:14px}
+.note ol{margin:4px 0 0;padding-left:18px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--card);padding:12px 20px;border-radius:14px;font-size:14px;font-weight:500;opacity:0;transition:.25s;z-index:1100;pointer-events:none;max-width:90vw;text-align:center;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============ 3D 等角門市標記 ============ */
+.iso-mk{position:relative;cursor:pointer;--anchor:var(--a-full);transform:translateY(var(--anchor))}
+.engine-l .iso-mk{position:absolute;left:0;top:0;transform:translate(-50%,calc(-100% + var(--anchor)))}
+#map.z-far .iso-mk{--anchor:var(--a-comp)}
+.iso-body{position:relative;z-index:1;transition:transform .3s cubic-bezier(.3,1.4,.5,1);transform-origin:50% 85%;filter:drop-shadow(0 12px 10px rgba(120,70,20,.22))}
+.iso-full svg,.iso-comp svg{display:block;width:var(--w);height:auto}
+/* --ms 由縮放等級決定：放大地圖時門市圖示跟著稍微變大 */
+.k-store{--w:calc(156px * var(--ms,1))}.k-flag{--w:calc(192px * var(--ms,1))}
+.iso-comp{display:none}
+#map.z-far .iso-full{display:none}#map.z-far .iso-comp{display:block}
+#map.z-far .k-store{--w:26px}#map.z-far .k-flag{--w:30px}
+.iso-mk:hover .iso-body{transform:translateY(-5px)}
+.iso-mk.active .iso-body{transform:translateY(-10px) scale(1.1);filter:drop-shadow(0 18px 12px rgba(255,106,0,.35))}
+.iso-mk.active{z-index:9999}
+.iso-mk{opacity:var(--fo,1);transition:opacity .3s ease}
+.iso-mk.dim{opacity:calc(var(--fo,1) * .3)}
+.iso-mk:hover,.iso-mk.active{opacity:1}
+/* 交疊時改為小圖示 */
+.iso-mk.mini{--anchor:var(--a-comp)}
+.iso-mk.mini .iso-full,.iso-mk.mini .mwalk,.iso-mk.mini .heat{display:none}.iso-mk.mini .iso-comp{display:block}
+.iso-mk.mini.k-store{--w:28px}.iso-mk.mini.k-flag{--w:32px}
+.iso-mk.mini .iso-badge{top:-10px;right:-12px;min-width:20px;height:20px;font-size:10px;padding:0 5px;border-width:2px}
+.iso-mk.l-no .iso-full svg,.iso-mk.l-no .iso-comp svg{filter:saturate(.25)}
+.iso-badge{position:absolute;top:12%;right:12%;min-width:26px;height:26px;padding:0 7px;border-radius:99px;display:grid;place-items:center;font:800 12px var(--font);color:#fff;background:var(--brand);border:2.5px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);pointer-events:none}
+.iso-badge.b-ok{background:var(--ok)}.iso-badge.b-low{background:var(--warn)}.iso-badge.b-no{background:#A3A5AB}
+#map.z-far .iso-badge{top:-10px;right:-12px;min-width:20px;height:20px;font-size:10px;padding:0 5px;border-width:2px}
+.iso-name{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%) translateY(4px);white-space:nowrap;background:var(--ink);color:#fff;font:700 12px var(--font);padding:6px 11px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;box-shadow:var(--shadow)}
+.iso-name::after{content:"";position:absolute;left:50%;top:100%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--ink)}
+.iso-mk:hover .iso-name,.iso-mk.active .iso-name{opacity:1;transform:translateX(-50%)}
+.me-dot{width:18px;height:18px;border-radius:50%;background:#2B7CFF;border:3px solid #fff;box-shadow:0 0 0 8px rgba(43,124,255,.22),0 2px 6px rgba(0,0,0,.25)}
+.engine-l .me-dot{transform:translate(-50%,-50%)}
+
+
+/* 地圖上的行人 */
+.mwalk{position:absolute;width:0;height:0;pointer-events:none}.mwalk.front{z-index:2}.mwalk.back{z-index:0}
+.mw{position:absolute;left:0;top:0;opacity:0;animation:mw 10s linear infinite}
+.mw svg{position:absolute;left:calc(-8px * var(--ms,1));bottom:calc(-2.4px * var(--ms,1));width:calc(16px * var(--ms,1));height:auto;overflow:visible}
+@keyframes mw{0%{opacity:0;transform:translate(calc(var(--x0) * var(--ms,1)),calc(var(--y0) * var(--ms,1)))}5%{opacity:1}68%{opacity:1}72%{opacity:0;transform:translate(calc(var(--x1) * var(--ms,1)),calc(var(--y1) * var(--ms,1)))}100%{opacity:0;transform:translate(calc(var(--x1) * var(--ms,1)),calc(var(--y1) * var(--ms,1)))}}
+#map.z-far .mwalk,#map.z-mid .mwalk{display:none}
+/* 簡化底圖：降低彩度，讓 3D 門市更突出 */
+/* 視覺焦點：滑鼠所在處地圖（橘色道路）最清楚，越往外越淡、直至底色 */
+.engine-g #map{background:#F4F2EE}
+.engine-g #map canvas{--m:radial-gradient(circle at var(--fx,60%) var(--fy,50%),#000 0,#000 var(--fr,230px),rgba(0,0,0,.78) calc(var(--fr,230px) * 1.7),rgba(0,0,0,.5) calc(var(--fr,230px) * 3));-webkit-mask-image:var(--m);mask-image:var(--m)}
+/* 門市造型圖鑑 */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 18px 18px}
+.scard{background:linear-gradient(170deg,#FFF6EA,var(--card-2));border-radius:18px;padding:10px 8px;text-align:center}
+.scard:last-child{grid-column:1/-1}.scard:last-child svg{max-width:62%;margin:0 auto}
+.scard svg{width:100%;height:auto;display:block}
+.scard b{display:block;font-size:13px;margin-top:4px}.scard span{font-size:11px;color:var(--ink-3)}
+.hero-style{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font:700 11px var(--font);background:rgba(255,255,255,.88);padding:4px 10px;border-radius:99px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){.mwalk,.sig{display:none}}
+
+/* 開發者模式才顯示的元素 */
+body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
+.book-hero{margin:6px 18px 14px;padding:18px;border-radius:20px;background:linear-gradient(135deg,#FF7A1A,#F73603);color:#fff;position:relative;overflow:hidden}
+.book-hero b{display:block;font-size:17px;font-weight:900}
+.book-hero span{display:block;font-size:13px;opacity:.9;margin-top:4px;line-height:1.5}
+.book-hero .btn{margin-top:14px;background:#fff;color:#E85A00;width:100%;font-weight:800;text-decoration:none}
+.book-hero svg.gm{position:absolute;right:-14px;top:-14px;width:92px;height:92px;opacity:.45;mix-blend-mode:screen}
+/* 底部導覽（手機） */
+.bnav{display:none}
+
+/* ============ 手機版 ============ */
+/* ============ 快捷圖層（右側小圓） ============ */
+.layers{position:fixed;right:16px;top:88px;z-index:660;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-height:calc(100vh - 260px);overflow-y:auto;overflow-x:visible;padding:2px 2px 6px 40px;scrollbar-width:none}
+.layers::-webkit-scrollbar{display:none}
+.lyr{display:flex;align-items:center;gap:10px;flex-direction:row-reverse;position:relative}
+.lyr-dot{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;box-shadow:var(--shadow);border:3px solid var(--card);position:relative;transition:transform .15s}
+.lyr-dot svg{width:24px;height:24px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.lyr-dot .thumb-svg svg{width:40px;height:auto;filter:none}
+.lyr:hover .lyr-dot{transform:scale(1.06)}
+.lyr-lbl{height:34px;padding:0 14px;border-radius:99px;background:var(--card);box-shadow:var(--shadow-sm);font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--ink)}
+.lyr-key{min-width:18px;height:18px;padding:0 5px;border-radius:6px;background:var(--card-2);color:var(--ink-3);font:700 11px var(--font);display:inline-grid;place-items:center}
+.lyr.on .lyr-dot{box-shadow:0 0 0 3px var(--brand),var(--shadow)}
+.lyr.on .lyr-lbl{background:var(--ink);color:var(--card)}
+.lyr.on .lyr-key{background:var(--brand);color:#fff}
+.lyr.add .lyr-dot{background:var(--card);color:var(--ink-2);border-style:dashed;border-color:var(--ink-4)}
+.lyr.add .lyr-lbl{background:transparent;box-shadow:none;color:var(--ink-3);font-weight:600}
+.layers.collapsed .lyr-lbl{display:none}
+.lyr-toggle{height:28px;padding:0 10px;border-radius:99px;background:var(--card);box-shadow:var(--shadow-sm);font-size:12px;font-weight:600;color:var(--ink-3)}
+
+.layerbar{position:fixed;left:calc(16px + 400px + 16px);right:96px;bottom:24px;z-index:655;display:none;justify-content:center;pointer-events:none}
+.layerbar.show{display:flex}
+.lb-card{pointer-events:auto;background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:14px 16px;max-width:620px;width:100%;animation:pop .2s ease}
+.lb-head{display:flex;align-items:center;gap:10px}
+.lb-head .lyr-dot{width:34px;height:34px;border-width:2px;box-shadow:none}
+.lb-head .lyr-dot svg{width:17px;height:17px}
+.lb-head b{font-size:15px;font-weight:800}
+.lb-head small{display:block;font-size:12px;color:var(--ink-3);font-weight:500}
+.lb-scale{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+.lb-scale div{border-radius:12px;padding:7px 8px;background:var(--card-2);display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.lb-scale i{width:12px;height:12px;border-radius:50%;flex:none}
+.lb-scale span{white-space:nowrap}
+.lb-scale b{margin-left:auto;font-size:13px;color:var(--ink)}
+.lb-ctl{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.lb-ctl .chips .chip{height:30px;font-size:12.5px}
+.lb-range{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600}
+.lb-range input{flex:1;accent-color:var(--brand)}
+.lb-range span{min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* 熱度暈染 */
+.iso-mk{isolation:isolate}
+.heat{position:absolute;left:50%;top:calc(100% - var(--anchor));width:calc(var(--hs,190px) * var(--ms,1));height:calc(var(--hs,190px) * var(--ms,1) * .62);transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:-1;animation:heatin .35s ease}
+@keyframes heatin{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
+#map.z-far .heat{--hs:64px;--ms:1}
+.heat.h-g{background:radial-gradient(closest-side,rgba(20,163,90,.55),rgba(20,163,90,.22) 60%,rgba(20,163,90,0))}
+.heat.h-y{background:radial-gradient(closest-side,rgba(232,180,0,.6),rgba(232,180,0,.24) 60%,rgba(232,180,0,0))}
+.heat.h-o{background:radial-gradient(closest-side,rgba(240,122,26,.6),rgba(240,122,26,.24) 60%,rgba(240,122,26,0))}
+.heat.h-r{background:radial-gradient(closest-side,rgba(229,72,77,.6),rgba(229,72,77,.25) 60%,rgba(229,72,77,0))}
+.iso-badge.b-g{background:#14A35A}.iso-badge.b-y{background:#E0A800}.iso-badge.b-o{background:#F07A1A}.iso-badge.b-r{background:#E5484D}
+.hk-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.hk-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:var(--card-2)}
+.hk-row .lyr-dot{width:34px;height:34px;border-width:2px;box-shadow:none}
+.hk-row .lyr-dot svg{width:16px;height:16px}
+.hk-row .lyr-dot .thumb-svg svg{width:26px}
+.hk-row b{font-size:13.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hk-row .iconbtn{width:30px;height:30px;border-radius:9px;background:var(--card)}
+.typeseg{display:flex;gap:4px;padding:4px;background:var(--card-2);border-radius:14px;margin-top:8px}
+.typeseg button{flex:1;height:36px;border-radius:11px;font-size:13px;font-weight:700;color:var(--ink-3)}
+.typeseg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm)}
+.sel.full{width:100%;height:44px}
+
+@media (max-width: 860px){
+  .topbar{top:max(10px,env(safe-area-inset-top));left:10px;right:10px;height:50px;gap:8px}
+  .brand{width:50px;height:50px;padding:0;justify-content:center;border-radius:16px}
+  .brand>div:not(.logo){display:none}
+  .search{height:50px;border-radius:16px;padding:0 14px;max-width:none}
+  .circle{width:50px;height:50px;border-radius:16px}
+  #srcBtn{display:none}
+  .mapctl{top:auto;right:10px;bottom:calc(var(--sheet-h,46vh) + 76px);gap:8px;transition:bottom .25s}
+  .ctl{width:44px;height:44px}
+  .zoom-group{display:none}
+  .areaBtn{top:72px;left:50%}
+  .legend{right:auto;left:10px;top:70px;bottom:auto;padding:8px 12px}
+  .layers{top:72px;right:8px;gap:7px;max-height:calc(100vh - var(--sheet-h,46vh) - 230px);padding-left:4px}
+  .layers .lyr-lbl{display:none}
+  .layers.expanded .lyr-lbl{display:flex}
+  .lyr-dot{width:44px;height:44px}
+  .lyr-dot svg{width:20px;height:20px}
+  .lyr-dot .thumb-svg svg{width:32px}
+  .lyr-toggle{display:none}
+  .layerbar{left:10px;right:62px;bottom:calc(var(--sheet-h,46vh) + 76px)}
+  .layers{overflow:visible;max-height:none}
+  .lb-card{padding:10px 12px;border-radius:18px}
+  .lb-head{gap:8px}
+  .lb-head .lyr-dot{display:none}
+  .lb-head b{font-size:14px}
+  .lb-head small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lb-head .iconbtn{width:32px;height:32px}
+  .lb-scale{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+  .lb-scale div{flex-direction:column;align-items:flex-start;gap:2px;padding:6px 7px;font-size:10.5px;border-radius:10px}
+  .lb-scale i{width:8px;height:8px;position:absolute}
+  .lb-scale div{position:relative;padding-left:7px}
+  .lb-scale div span{padding-left:12px}
+  .lb-scale b{margin-left:0;font-size:14px}
+  .lb-ctl{margin-top:8px;gap:6px}
+  .lb-ctl .chips .chip{height:28px;padding:0 10px;font-size:12px}
+  .lb-range{font-size:12px}
+  .lb-range span{min-width:70px}
+  .panel{left:0;right:0;width:auto;top:auto;bottom:calc(64px + env(safe-area-inset-bottom));height:var(--sheet-h,46vh);border-radius:24px 24px 0 0;transition:height .25s cubic-bezier(.2,.9,.3,1);box-shadow:0 -8px 30px rgba(0,0,0,.12)}
+  .panel.dragging{transition:none}
+  .grab{display:block;padding:10px 0 4px;cursor:grab;touch-action:none;flex:none}
+  .grab i{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto}
+  .seg{display:none}
+  .h-title{font-size:20px;margin-top:4px}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);z-index:690}
+  .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--ink-3)}
+  .bnav button.active{color:var(--brand)}
+  .bnav .cnt{position:absolute;margin:-26px 0 0 26px}
+  .hero{height:180px}
+  .hero-art svg{width:170px}
+  .toast{bottom:calc(var(--sheet-h,46vh) + 80px)}
+  .modal{border-radius:24px 24px 0 0;align-self:flex-end;max-height:86vh}
+  .mask{padding:0}
+}
+</style>
+</head>
+<body>
+
+<div class="map-wrap"><div id="map"></div></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" id="brandGem" aria-hidden="true"></div>
+    <div class="brand-t"><b><span class="bt-co">台灣大哥大</span><span class="bt-app">門市現貨查詢地圖</span></b><small id="srcBadge">Prototype</small></div>
+  </div>
+  <label class="search">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" placeholder="搜尋門市、地區或商品" autocomplete="off">
+  </label>
+  <div class="top-actions">
+    <button class="circle" id="locBtn" title="定位我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 11 18-8-8 18-2-8-8-2z"/></svg></button>
+    <button class="circle" id="srcBtn" title="地圖資料來源"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+</header>
+
+<div class="mapctl">
+  <div class="ctl-group g-only">
+    <button class="ctl on" id="tiltBtn" title="切換 2D / 3D">3D</button>
+    <button class="ctl" id="rotL" title="向左旋轉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    <button class="ctl" id="rotR" title="向右旋轉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+  </div>
+  <div class="ctl-group zoom-group">
+    <button class="ctl" id="zIn" title="放大"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ctl" id="zOut" title="縮小"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/></svg></button>
+  </div>
+</div>
+<div class="layers" id="layers"></div>
+<div class="layerbar" id="layerbar"><div class="lb-card" id="lbCard"></div></div>
+<div class="areaBtn" id="areaBtn" role="status" aria-live="polite"><span></span></div>
+<div class="legend" id="legend"><span><i style="background:var(--ok)"></i>有現貨</span><span><i style="background:var(--warn)"></i>少量</span><span><i style="background:#A3A5AB"></i>無貨</span></div>
+
+<aside class="panel" id="panel">
+  <div class="grab" id="grab"><i></i></div>
+  <nav class="seg" id="tabs"></nav>
+
+  <section class="view active" id="v-stores">
+    <div class="h-title">找門市</div>
+    <div class="h-sub" id="storeCount"></div>
+    <div class="pad" style="padding-top:6px;padding-bottom:4px">
+      <div class="row">
+        <select class="sel" id="city"><option value="">全部縣市</option></select>
+        <button class="chip" id="openNow"><span class="dot"></span>營業中</button>
+        <select class="sel" id="sort" style="margin-left:auto"><option value="dist">距離最近</option><option value="queue">等候最短</option></select>
+      </div>
+      <div class="chips" id="svcChips" style="margin-top:10px"></div>
+    </div>
+    <div id="storeList" style="padding:6px 0 14px"></div>
+  </section>
+
+  <section class="view" id="v-products">
+    <div class="h-title">商品現貨</div>
+    <div class="h-sub">選擇商品與規格，地圖會標示各門市庫存</div>
+    <div class="pad" style="padding-top:6px;padding-bottom:6px"><div class="chips" id="catChips"></div></div>
+    <div id="specBox"></div>
+    <div id="prodStores"></div>
+    <div class="section-t" id="prodTitle"></div>
+    <div class="pgrid" id="prodGrid"></div>
+  </section>
+
+  <section class="view" id="v-book">
+    <div class="h-title">預約</div>
+    <div class="h-sub">預約到店與線上取號</div>
+    <div class="book-hero"><svg class="gm" viewBox="-1.05 -1.05 2.1 2.1" id="bookGem"></svg><b>台灣大哥大 預約到店</b><span>選門市、服務項目與時段，到店免排隊。</span><a class="btn" id="bookOpen" target="_blank" rel="noopener">前往預約系統 ↗</a></div>
+    <div class="section-t">我的取號</div>
+    <div id="bookList"></div>
+  </section>
+
+  <section class="view" id="v-more">
+    <div class="h-title">更多功能</div>
+    <div class="banner"><b>功能藍圖</b><span>綠色＝本雛型已示範 · 黃色＝建議第二階段 · 灰色＝進階／內部版</span></div>
+    <div class="pad"><button class="btn" style="width:100%" id="srcBtn2">地圖資料來源設定（Google 金鑰）</button></div>
+    <div id="featList"></div>
+  </section>
+
+  <div class="detail" id="detail"><div class="d-body" id="dBody"></div></div>
+</aside>
+
+<nav class="bnav" id="bnav"></nav>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= 設定 =================
+   Google 地圖模式：在下面填入 API 金鑰，或在頁面上按右上角齒輪貼上（只存在這台瀏覽器）。
+   需在 Google Cloud 啟用：Maps JavaScript API、Places API (New)，並開啟帳單。
+   3D 傾斜需要「向量」Map ID；預設用 Google 提供的 DEMO_MAP_ID。 */
+const GOOGLE_MAPS_API_KEY = "AIzaSyDKM0YUih-4VwCwwnySgdCoc0_1oMgcblM";
+const LS_KEY="twm_gmaps_key", LS_MAPID="twm_gmaps_mapid";
+function lsGet(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
+function lsSet(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}
+const API_KEY = GOOGLE_MAPS_API_KEY || lsGet(LS_KEY);
+const GOOGLE_MAP_ID = "b05c24b85f87f853a2a41709";  /* 向量地圖 Map ID，寫在這裡就不必每個人自己設定 */
+const MAP_ID = GOOGLE_MAP_ID || lsGet(LS_MAPID) || "DEMO_MAP_ID";
+const TILT_3D=55, HEADING_3D=-20;
+let SOURCE=null, MAP=null;
+
+/* ================= 示意資料 ================= */
+const SVC={fiveg:"5G體驗",repair:"維修收送",trade:"舊機回收",en:"外語服務",access:"無障礙",park:"特約停車",pickup:"網購取貨",home:"家電／寬頻"};
+const CITIES=["基隆市","台北市","新北市","桃園市","新竹市","新竹縣","苗栗縣","台中市","彰化縣","南投縣","雲林縣","嘉義市","嘉義縣","台南市","高雄市","屏東縣","宜蘭縣","花蓮縣","台東縣","澎湖縣","金門縣","連江縣"];
+const DEMO_STORES=[
+ ["台北信義旗艦店","台北市","台北市信義區松高路 ○○ 號",25.0360,121.5670,"10:00-22:00",["fiveg","repair","trade","en","access","pickup","home"],true],
+ ["台北西門店","台北市","台北市萬華區漢中街 ○○ 號",25.0422,121.5079,"11:00-22:00",["fiveg","trade","en","pickup"]],
+ ["台北南京東路店","台北市","台北市松山區南京東路 ○ 段 ○○ 號",25.0518,121.5440,"11:00-21:30",["repair","trade","pickup","access"]],
+ ["新北板橋店","新北市","新北市板橋區文化路 ○ 段 ○○ 號",25.0143,121.4637,"11:00-21:30",["fiveg","repair","trade","pickup","park"]],
+ ["新北新莊店","新北市","新北市新莊區中正路 ○○ 號",25.0360,121.4500,"11:00-21:30",["trade","pickup","home"]],
+ ["桃園中正店","桃園市","桃園市桃園區中正路 ○○ 號",24.9936,121.3010,"11:00-21:30",["fiveg","repair","trade","pickup","park"]],
+ ["桃園中壢店","桃園市","桃園市中壢區中山路 ○○ 號",24.9539,121.2257,"11:00-21:30",["trade","en","pickup","access"]],
+ ["新竹竹北店","新竹縣","新竹縣竹北市光明六路 ○○ 號",24.8270,121.0120,"11:00-21:30",["fiveg","repair","trade","pickup","park","home"]],
+ ["新竹東門店","新竹市","新竹市東區東門街 ○○ 號",24.8040,120.9710,"11:00-21:30",["trade","pickup"]],
+ ["台中逢甲店","台中市","台中市西屯區福星路 ○○ 號",24.1790,120.6460,"11:00-22:00",["fiveg","trade","en","pickup"]],
+ ["台中公益旗艦店","台中市","台中市南屯區公益路 ○ 段 ○○ 號",24.1520,120.6610,"10:00-22:00",["fiveg","repair","trade","en","access","pickup","park","home"],true],
+ ["彰化中山店","彰化縣","彰化縣彰化市中山路 ○ 段 ○○ 號",24.0790,120.5420,"11:00-21:30",["repair","trade","pickup"]],
+ ["嘉義文化店","嘉義市","嘉義市東區文化路 ○○ 號",23.4800,120.4500,"11:00-21:30",["trade","pickup","access"]],
+ ["台南中西店","台南市","台南市中西區西門路 ○ 段 ○○ 號",22.9930,120.2020,"11:00-21:30",["fiveg","repair","trade","en","pickup"]],
+ ["台南永康店","台南市","台南市永康區中華路 ○○ 號",23.0260,120.2550,"11:00-21:30",["trade","pickup","park","home"]],
+ ["高雄巨蛋旗艦店","高雄市","高雄市左營區博愛二路 ○○ 號",22.6690,120.3020,"10:00-22:00",["fiveg","repair","trade","en","access","pickup","park","home"],true],
+ ["高雄夢時代店","高雄市","高雄市前鎮區中華五路 ○○ 號",22.5950,120.3070,"11:00-22:00",["fiveg","trade","pickup","park"]],
+ ["宜蘭羅東店","宜蘭縣","宜蘭縣羅東鎮中正路 ○○ 號",24.6770,121.7700,"11:00-21:00",["repair","trade","pickup"]],
+ ["花蓮中正店","花蓮縣","花蓮縣花蓮市中正路 ○○ 號",23.9770,121.6040,"11:00-21:00",["trade","pickup","access"]],
+ ["台東中華店","台東縣","台東縣台東市中華路 ○ 段 ○○ 號",22.7560,121.1500,"11:00-21:00",["trade","pickup"]],
+];
+let STORES=[];
+const CATS={phone:"手機",tablet:"平板",wear:"穿戴",audio:"耳機",acc:"配件",home:"智慧家庭"};
+const PRODUCTS=[
+ {id:"duo",name:"iPhone Duo",cat:"phone",price:74900,ic:"📖",colors:["星光白","夜空色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip18pm",name:"iPhone 18 Pro Max",cat:"phone",price:49900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip18p",name:"iPhone 18 Pro",cat:"phone",price:44900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip17p",name:"iPhone 17 Pro",cat:"phone",price:36900,ic:"📱",colors:["沙漠鈦","黑色鈦","白色鈦"],caps:["256GB","512GB","1TB"]},
+ {id:"ip17",name:"iPhone 17",cat:"phone",price:29900,ic:"📱",colors:["藍","粉","黑"],caps:["128GB","256GB"]},
+ {id:"s26u",name:"Galaxy S26 Ultra",cat:"phone",price:42900,ic:"📱",colors:["鈦灰","鈦黑","鈦紫"],caps:["256GB","512GB"]},
+ {id:"flip",name:"Galaxy Z Flip7",cat:"phone",price:35900,ic:"📲",colors:["薄荷","酷黑","冰藍"],caps:["256GB","512GB"]},
+ {id:"px10",name:"Pixel 10 Pro",cat:"phone",price:33900,ic:"📱",colors:["曜石黑","瓷白"],caps:["128GB","256GB"]},
+ {id:"x15t",name:"Xiaomi 15T Pro",cat:"phone",price:19990,ic:"📱",colors:["黑","灰","金"],caps:["256GB","512GB"]},
+ {id:"ipadair",name:"iPad Air 11吋",cat:"tablet",price:19900,ic:"💻",colors:["太空灰","星光","藍"],caps:["128GB","256GB"]},
+ {id:"tabs10",name:"Galaxy Tab S10 FE",cat:"tablet",price:15900,ic:"💻",colors:["灰","銀"],caps:["128GB"]},
+ {id:"aw",name:"Apple Watch Series",cat:"wear",price:13900,ic:"⌚",colors:["午夜","星光"],caps:["42mm","46mm"]},
+ {id:"airpods",name:"AirPods Pro",cat:"audio",price:7490,ic:"🎧",colors:["白"],caps:["USB-C"]},
+ {id:"buds",name:"Galaxy Buds3 Pro",cat:"audio",price:6990,ic:"🎧",colors:["銀","白"],caps:["標準"]},
+ {id:"chg",name:"45W 快充組",cat:"acc",price:990,ic:"🔌",colors:["白","黑"],caps:["單孔","雙孔"]},
+ {id:"case",name:"MagSafe 防摔殼",cat:"acc",price:1290,ic:"🛡️",colors:["透明","黑","粉"],caps:["iPhone 17 Pro","iPhone 17"]},
+ {id:"cam",name:"智慧居家攝影機",cat:"home",price:1990,ic:"📷",colors:["白"],caps:["2K"]},
+ {id:"router",name:"5G 行動分享器",cat:"home",price:5990,ic:"📡",colors:["黑"],caps:["Wi-Fi 6"]},
+];
+function hash(str){let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function stockOf(s,pid,color,cap){const h=hash(`${s.key}|${pid}|${color}|${cap}`)%100;let q=h<22?0:h<45?1+(h%3):4+(h%14);if(s.flag)q+=3;return q}
+const lvl=q=>q===0?"no":q<=3?"low":"ok";
+const lvlText={ok:"有現貨",low:"少量",no:"無貨"};
+/* 預約＋現場等候人數（示意）：依時段曲線 × 各店人氣 */
+function peopleOf(s,hr=new Date().getHours()){
+  if(hr<10||hr>21)return 0;
+  const curve=Math.exp(-((hr-(hr<16?14:19))**2)/6), pop=.25+(hash(s.key+"pop")%100)/100;
+  return Math.max(0,Math.round(curve*24*pop+(hash(s.key+"p"+hr)%5)+(s.flag?6:0)));
+}
+function queueOf(s){return Math.ceil(peopleOf(s)/2)}
+
+/* ================= 3D 等角門市（圓潤黏土風）：10 種造型＋進出小人 =================
+   參考：圓角磁磚底座、圓角量體、暖色室內透出、圓球樹、桌椅陽傘；
+   台灣大哥大彩球 logo 依官方 24 面配色重建，並搭配「台灣大哥大」字標。
+   每間門市依名稱固定分配一種造型（一般門市 8 種、旗艦店 2 種）；門口與步道會不定時有小人進出。 */
+const C30=Math.cos(Math.PI/6), G=6, NAVY_T="#2F2E6C";
+const FONT="'Noto Sans TC','PingFang TC','Microsoft JhengHei','Heiti TC',sans-serif";
+let BB, WALK;
+function bb(x,y){if(x<BB[0])BB[0]=x;if(y<BB[1])BB[1]=y;if(x>BB[2])BB[2]=x;if(y>BB[3])BB[3]=y}
+function P(x,y,z){const p=[(x-y)*C30,(x+y)*.5-z];bb(p[0],p[1]);return p}
+const f1=n=>(+n).toFixed(2).replace(/\.?0+$/,"");
+const pts=a=>a.map(p=>f1(p[0])+","+f1(p[1])).join(" ");
+function sh(hex,k){const n=parseInt(hex.slice(1),16),t=k<0?0:255,a=Math.abs(k);return "#"+[n>>16,n>>8&255,n&255].map(v=>Math.round(v+(t-v)*a).toString(16).padStart(2,"0")).join("")}
+function mix(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16);return "#"+[16,8,0].map(s=>Math.round((A>>s&255)*(1-t)+(B>>s&255)*t).toString(16).padStart(2,"0")).join("")}
+/* 色票：[頂面, 右側面(較暗), 左側面] */
+const pal=(h,k=.12)=>[sh(h,.22),sh(h,-k*1.25),sh(h,-k*.2)];
+function poly(a,fill,op){return op!=null?`<polygon points="${pts(a)}" fill="${fill}" fill-opacity="${op}"/>`:`<polygon points="${pts(a)}" fill="${fill}" stroke="${fill}" stroke-width=".3" stroke-linejoin="round"/>`}
+function pl(a,c,w=.5,op=1){return `<polyline points="${pts(a)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-opacity="${op}" stroke-linecap="round" stroke-linejoin="round"/>`}
+
+/* ---------- 牆面／頂面座標系：在面上直接畫 2D 圖形（圓角窗、字、logo） ---------- */
+function onY(Y,x0,zt,w,h,inner){P(x0,Y,zt);P(x0+w,Y,zt-h);P(x0,Y,zt-h);P(x0+w,Y,zt);return `<g transform="matrix(${f1(C30)} .5 0 1 ${f1((x0-Y)*C30)} ${f1((x0+Y)*.5-zt)})">${inner}</g>`}
+function onX(X,y0,zt,w,h,inner){P(X,y0,zt);P(X,y0-w,zt-h);P(X,y0,zt-h);P(X,y0-w,zt);return `<g transform="matrix(${f1(C30)} -.5 0 1 ${f1((X-y0)*C30)} ${f1((X+y0)*.5-zt)})">${inner}</g>`}
+function onZ(Z,x0,y0,w,d,inner){P(x0,y0,Z);P(x0+w,y0+d,Z);P(x0+w,y0,Z);P(x0,y0+d,Z);return `<g transform="matrix(${f1(C30)} .5 ${f1(-C30)} .5 ${f1((x0-y0)*C30)} ${f1((x0+y0)*.5-Z)})">${inner}</g>`}
+
+/* ---------- 圓角量體：依法線角度逐面著色 → 柔和的黏土質感 ---------- */
+function outline(x,y,w,d,r,N){
+  r=Math.max(.05,Math.min(r,w/2,d/2));const p=[];
+  for(const [cx,cy,a0] of [[x+w-r,y+r,-90],[x+w-r,y+d-r,0],[x+r,y+d-r,90],[x+r,y+r,180]])
+    for(let k=0;k<=N;k++){const a=(a0+90*k/N)*Math.PI/180;p.push([cx+r*Math.cos(a),cy+r*Math.sin(a)])}
+  return p;
+}
+function rbox(x,y,z,w,d,h,c,o={}){
+  const r=o.r??Math.min(2.4,w/3,d/3),N=o.N??(r>4?8:r>1.5?5:3),ol=outline(x,y,w,d,r,N);let s="";const edge=[];
+  for(let i=0;i<ol.length;i++){
+    const a=ol[i],b=ol[(i+1)%ol.length],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(L<1e-4)continue;
+    const nx=dy/L,ny=-dx/L;if(nx+ny<=.02)continue;
+    const ang=Math.atan2(ny,nx)*180/Math.PI,t=Math.min(1,Math.max(0,ang/90));
+    if(h>0)s+=poly([P(a[0],a[1],z),P(b[0],b[1],z),P(b[0],b[1],z+h),P(a[0],a[1],z+h)],mix(c[1],c[2],t),o.op);
+    edge.push(i);
+  }
+  s+=poly(ol.map(p=>P(p[0],p[1],z+h)),o.top||c[0],o.op);
+  if(o.rim){const k=o.rim.i||1.4,il=outline(x+k,y+k,w-2*k,d-2*k,Math.max(.3,r-k*.6),N);
+    s+=poly(il.map(p=>P(p[0],p[1],z+h)),o.rim.c)+(o.rim.wall?poly(il.map(p=>P(p[0],p[1],z+h)),o.rim.c):"");
+    /* 內凹屋頂的內牆陰影 */
+    s+=pl(il.slice(0,Math.ceil(il.length*.25)).concat(il.slice(Math.floor(il.length*.75))).map(p=>P(p[0],p[1],z+h)),sh(o.rim.c,-.2),.8,.6);}
+  if(o.hl!==false&&edge.length){
+    /* 前緣高光（看起來像圓角倒邊） */
+    const seq=[];for(const i of edge){seq.push(ol[i],ol[(i+1)%ol.length])}
+    s+=pl(seq.map(p=>P(p[0],p[1],z+h)),"#fff",.6,.6);
+  }
+  return s;
+}
+const cylR=(cx,cy,z,r,h,c,o={})=>rbox(cx-r,cy-r,z,2*r,2*r,h,c,{r,N:o.N??Math.max(5,Math.round(r*1.4)),...o});
+function shadow(x,y,w,d,r=2,op=.14){const ol=outline(x+1.6,y+.6,w+1.4,d+1,r+1,4);return `<polygon points="${pts(ol.map(p=>P(p[0],p[1],G+.02)))}" fill="#7A4E22" fill-opacity="${op}"/>`}
+function domeS(cx,cy,z,r,hd,c){
+  const t=P(cx,cy,z),rx=r*1.2247,ry=r*.7071,L=t[0]-rx,R=t[0]+rx;bb(L,t[1]+ry);bb(R,t[1]);bb(t[0],t[1]-hd);
+  return `<path d="M${f1(L)} ${f1(t[1])}A${f1(rx)} ${f1(hd)} 0 0 1 ${f1(R)} ${f1(t[1])}A${f1(rx)} ${f1(ry)} 0 0 1 ${f1(L)} ${f1(t[1])}Z" fill="${c[1]}"/>`
+   +`<path d="M${f1(L)} ${f1(t[1])}A${f1(rx)} ${f1(hd)} 0 0 1 ${f1(t[0]+rx*.15)} ${f1(t[1]-hd)}Q${f1(t[0]-rx*.25)} ${f1(t[1]-hd*.15)} ${f1(t[0]+rx*.1)} ${f1(t[1]+ry)}A${f1(rx)} ${f1(ry)} 0 0 1 ${f1(L)} ${f1(t[1])}Z" fill="${c[2]}"/>`
+   +`<ellipse cx="${f1(t[0]-rx*.38)}" cy="${f1(t[1]-hd*.55)}" rx="${f1(rx*.2)}" ry="${f1(hd*.16)}" fill="#fff" opacity=".45" transform="rotate(-25 ${f1(t[0]-rx*.38)} ${f1(t[1]-hd*.55)})"/>`;
+}
+
+/* ---------- 台灣大哥大彩球 logo（12 邊形、24 面，官方配色） ---------- */
+const GEM_C={c30:"#FF6700",c90:"#FF8F08",c150:"#FF6700",c210:"#F73603",c270:"#D82400",c330:"#F73603",
+  e30:"#FF9B0B",e90:"#FFBA0D",e150:"#FF9B0B",e210:"#0EAA7D",e270:"#624BEE",e330:"#CE2874",
+  vL30:"#FFBA0D",vR30:"#DD5298",vL90:"#FFD60B",vR90:"#FFBA0D",vL150:"#FFBA0D",vR150:"#FFD60B",
+  vL210:"#22DDB9",vR210:"#FFBA0D",vL270:"#024D59",vR270:"#098979",vL330:"#664AF6",vR330:"#3E1EE6"};
+function gem(cx,cy,R,mono){
+  const ri=R*.7756,o=a=>[cx+R*Math.cos(a*Math.PI/180),cy-R*Math.sin(a*Math.PI/180)],i=a=>[cx+ri*Math.cos(a*Math.PI/180),cy-ri*Math.sin(a*Math.PI/180)],C=[cx,cy];
+  const tp=(a,k,c)=>`<polygon points="${a.map(p=>f1(p[0])+","+f1(p[1])).join(" ")}" fill="${mono||GEM_C[k]}" stroke="${mono||GEM_C[k]}" stroke-width="${f1(R*.012)}" stroke-linejoin="round"/>`;
+  let s="";
+  for(const a of [30,90,150,210,270,330]){
+    s+=tp([C,i(a),i(a+60)],"c"+a)+tp([i(a),o(a+30),i(a+60)],"e"+a)+tp([o(a),o(a+30),i(a)],"vL"+a)+tp([o(a-30),o(a),i(a)],"vR"+a);
+  }
+  return s;
+}
+/* 畫面空間的立體彩球（雕塑、塔頂）：加上白底圓與陰影 */
+function gemBall(c,R,ring=true){bb(c[0]-R-2,c[1]-R-2);bb(c[0]+R+2,c[1]+R+2);
+  return (ring?`<circle cx="${f1(c[0]+R*.12)}" cy="${f1(c[1]+R*.14)}" r="${f1(R*1.08)}" fill="#7A4E22" opacity=".18"/><circle cx="${f1(c[0])}" cy="${f1(c[1])}" r="${f1(R*1.16)}" fill="#fff"/>`:"")
+   +gem(c[0],c[1],R)+`<ellipse cx="${f1(c[0]-R*.38)}" cy="${f1(c[1]-R*.5)}" rx="${f1(R*.26)}" ry="${f1(R*.13)}" fill="#fff" opacity=".45" transform="rotate(-30 ${f1(c[0]-R*.38)} ${f1(c[1]-R*.5)})"/>`}
+/* 招牌：logo＋字標（區域座標 w×h） */
+function signTxt(w,h,o={}){
+  const bg=o.bg??"#fff",tc=o.tc??NAVY_T,pad=h*.14;
+  return (bg!=="none"?`<rect width="${f1(w)}" height="${f1(h)}" rx="${f1(Math.min(h/2,o.rx??h*.32))}" fill="${bg}"/>`:"")
+   +(o.border?`<rect x="${f1(h*.08)}" y="${f1(h*.08)}" width="${f1(w-h*.16)}" height="${f1(h*.84)}" rx="${f1(h*.26)}" fill="none" stroke="${o.border}" stroke-width="${f1(h*.06)}"/>`:"")
+   +gem(h*.56,h/2,h*.32)
+   +`<text x="${f1(h*1.02)}" y="${f1(h*.7)}" font-family="${FONT}" font-weight="900" font-size="${f1(h*.5)}" fill="${tc}" textLength="${f1(w-h*1.02-pad*1.3)}" lengthAdjust="spacingAndGlyphs">台灣大哥大</text>`;
+}
+function wordV(w,h,o={}){ /* 直式招牌 */
+  const tc=o.tc??"#fff",cs="台灣大哥大".split(""),gh=w*.9,step=(h-gh-w*.5)/cs.length;
+  return `<rect width="${f1(w)}" height="${f1(h)}" rx="${f1(w*.4)}" fill="${o.bg??"#FF6A00"}"/><circle cx="${f1(w/2)}" cy="${f1(w*.62)}" r="${f1(w*.44)}" fill="#fff"/>`+gem(w/2,w*.62,w*.34)
+   +cs.map((c,k)=>`<text x="${f1(w/2)}" y="${f1(gh+w*.3+step*(k+.82))}" text-anchor="middle" font-family="${FONT}" font-weight="900" font-size="${f1(Math.min(w*.7,step*.9))}" fill="${tc}">${c}</text>`).join("");
+}
+
+/* ---------- 窗、門、遮陽棚（區域座標） ---------- */
+const PROD=["#FF6A00","#2F2E6C","#22DDB9","#FFBA0D","#DD5298","#624BEE"];
+function shopWin(w,h,o={}){
+  const fr=o.frame??"#FF6A00",ins=.55;let s=`<rect width="${f1(w)}" height="${f1(h)}" rx="${f1(o.rx??1.4)}" fill="${fr}"/>`
+   +`<rect x="${ins}" y="${ins}" width="${f1(w-ins*2)}" height="${f1(h-ins*2)}" rx="${f1(Math.max(.3,(o.rx??1.4)-.5))}" fill="${o.lit??"#FFE4B5"}"/>`;
+  if(o.plain!==true){
+    /* 後方展示架＋商品 */
+    const sy=h*.2,sh_=h*.3;s+=`<rect x="${f1(ins+.6)}" y="${f1(sy)}" width="${f1(w-ins*2-1.2)}" height="${f1(sh_)}" rx=".4" fill="#F5C487"/>`;
+    for(let k=0,n=Math.max(2,Math.floor((w-2)/1.6));k<n;k++)s+=`<rect x="${f1(ins+1+k*(w-ins*2-2)/n)}" y="${f1(sy+sh_*.18)}" width=".9" height="${f1(sh_*.55)}" rx=".25" fill="${PROD[(k+(o.seed||0))%6]}"/>`;
+    s+=`<rect x="${f1(ins+.6)}" y="${f1(sy+sh_)}" width="${f1(w-ins*2-1.2)}" height=".35" fill="#D9955A"/>`;
+    /* 櫃台＋展示手機 */
+    if(o.counter!==false){const cw=Math.min(w*.55,9),cx=o.cx??(w-cw)/2,cy=h*.64;
+      s+=`<rect x="${f1(cx)}" y="${f1(cy)}" width="${f1(cw)}" height="${f1(h-cy-ins)}" fill="#F08A45"/><rect x="${f1(cx-.2)}" y="${f1(cy-.5)}" width="${f1(cw+.4)}" height=".7" rx=".3" fill="#FFF3E2"/>`
+       +`<rect x="${f1(cx+cw*.3)}" y="${f1(cy-1.7)}" width=".8" height="1.3" rx=".2" fill="#2F2E6C"/><rect x="${f1(cx+cw*.6)}" y="${f1(cy-1.5)}" width="1.2" height="1.1" rx=".2" fill="#3A3A48"/>`;}
+    /* 吊燈 */
+    s+=[.3,.7].map(f=>`<line x1="${f1(w*f)}" y1="${ins}" x2="${f1(w*f)}" y2="${f1(h*.12)}" stroke="#9B6B43" stroke-width=".18"/><circle cx="${f1(w*f)}" cy="${f1(h*.13)}" r=".45" fill="#FFF6D0"/>`).join("");
+  }
+  if(o.mull)for(const m of o.mull)s+=`<rect x="${f1(m-.25)}" y="${ins}" width=".5" height="${f1(h-ins*2)}" fill="${fr}"/>`;
+  s+=`<rect x="${ins}" y="${ins}" width="${f1(w-ins*2)}" height="${f1(h-ins*2)}" rx="${f1(Math.max(.3,(o.rx??1.4)-.5))}" fill="#D5EEFB" fill-opacity="${o.plain?.55:.2}"/>`
+   +`<path d="M${f1(w*.5)} ${ins}h${f1(w*.16)}L${f1(w*.36)} ${f1(h-ins)}h${f1(-w*.16)}Z" fill="#fff" opacity=".38"/><path d="M${f1(w*.72)} ${ins}h${f1(w*.05)}L${f1(w*.57)} ${f1(h-ins)}h${f1(-w*.05)}Z" fill="#fff" opacity=".3"/>`;
+  return s;
+}
+function door2(w,h,c="#FF6A00"){
+  const g=(x)=>`<rect x="${f1(x)}" y="${f1(h*.12)}" width="${f1(w/2-1.4)}" height="${f1(h*.5)}" rx=".7" fill="#FFE4B5"/><rect x="${f1(x)}" y="${f1(h*.12)}" width="${f1(w/2-1.4)}" height="${f1(h*.5)}" rx=".7" fill="#D5EEFB" fill-opacity=".3"/><rect x="${f1(x)}" y="${f1(h*.7)}" width="${f1(w/2-1.4)}" height="${f1(h*.2)}" rx=".5" fill="${sh(c,-.12)}"/>`;
+  return `<rect width="${f1(w)}" height="${f1(h+.4)}" rx="1.3" fill="${sh(c,-.18)}"/><rect x=".35" y=".35" width="${f1(w/2-.45)}" height="${f1(h)}" rx="1" fill="${c}"/><rect x="${f1(w/2+.1)}" y=".35" width="${f1(w/2-.45)}" height="${f1(h)}" rx="1" fill="${c}"/>`
+   +g(1)+g(w/2+.7)+`<rect x="${f1(w/2-.9)}" y="${f1(h*.55)}" width=".35" height="1.6" rx=".17" fill="#fff"/><rect x="${f1(w/2+.55)}" y="${f1(h*.55)}" width=".35" height="1.6" rx=".17" fill="#fff"/>`;
+}
+function winRound(w,h,fr="#fff"){return `<rect width="${f1(w)}" height="${f1(h)}" rx="${f1(w/2)}" fill="${fr}"/><rect x=".5" y=".5" width="${f1(w-1)}" height="${f1(h-1)}" rx="${f1(w/2-.5)}" fill="#BFE0F3"/><rect x=".5" y="${f1(h*.55)}" width="${f1(w-1)}" height="${f1(h*.45-.5)}" rx=".6" fill="#FFE4B5" opacity=".85"/><path d="M${f1(w*.55)} 1h${f1(w*.18)}L${f1(w*.35)} ${f1(h-1)}h${f1(-w*.18)}Z" fill="#fff" opacity=".45"/><rect x="${f1(w/2-.18)}" y=".5" width=".36" height="${f1(h-1)}" fill="${fr}"/>`}
+/* 扇形遮陽棚（貼在 y=Y 的左側牆） */
+function awnY(Y,x,zt,w,out,drop,cA="#FF6A00",cB="#FFD9C4",n){
+  n=n||Math.max(3,Math.round(w/1.9));const sw=w/n;let s="";
+  for(let k=0;k<n;k++){const c=k%2?cB:cA;s+=poly([P(x+k*sw,Y,zt),P(x+(k+1)*sw,Y,zt),P(x+(k+1)*sw,Y+out,zt-drop),P(x+k*sw,Y+out,zt-drop)],c)}
+  let v="";for(let k=0;k<n;k++){const c=k%2?sh(cB,-.08):sh(cA,-.1);v+=`<path d="M${f1(k*sw)} 0h${f1(sw)}v.9a${f1(sw/2)} ${f1(sw/2)} 0 0 1 ${f1(-sw)} 0z" fill="${c}"/>`}
+  s+=onY(Y+out,x,zt-drop,w,1.8,v);
+  /* 側邊三角 */
+  s+=poly([P(x+w,Y,zt),P(x+w,Y+out,zt-drop),P(x+w,Y+out,zt-drop-.9),P(x+w,Y,zt-.3)],sh(cA,-.25));
+  return s;
+}
+
+/* ---------- 景物 ---------- */
+function treeR(x,y,z,s=1){
+  const [cx,cy]=P(x,y,z);bb(cx-6*s,cy-17.5*s);bb(cx+7*s,cy+2.5*s);
+  const c=(u,v,r,f)=>`<circle cx="${f1(cx+u*s)}" cy="${f1(cy+v*s)}" r="${f1(r*s)}" fill="${f}"/>`;
+  return `<ellipse cx="${f1(cx+2.4*s)}" cy="${f1(cy+.4)}" rx="${f1(5*s)}" ry="${f1(2.2*s)}" fill="#7A4E22" opacity=".16"/>`
+   +`<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(2.2*s)}" ry="${f1(1.1*s)}" fill="#6FB559"/>`
+   +`<rect x="${f1(cx-.8*s)}" y="${f1(cy-7*s)}" width="${f1(1.6*s)}" height="${f1(7*s)}" rx="${f1(.8*s)}" fill="#9B6B43"/>`
+   +`<path d="M${f1(cx)} ${f1(cy-5*s)}l${f1(-2*s)} ${f1(-2.4*s)}M${f1(cx)} ${f1(cy-4.4*s)}l${f1(1.8*s)} ${f1(-2*s)}" stroke="#9B6B43" stroke-width="${f1(.6*s)}" stroke-linecap="round"/>`
+   +c(-3.3,-9.6,3.7,"#4FA65B")+c(3.4,-9.2,3.6,"#3E9450")+c(0,-12.4,5,"#4FA65B")+c(.6,-8.6,3.9,"#469E55")
+   +c(-1.8,-13.6,3,"#7CCB6A")+c(-3.6,-10.6,1.9,"#6CBF62")+c(-2.4,-14.8,1.2,"#A9E28D");
+}
+function cypress(x,y,z,s=1){
+  const [cx,cy]=P(x,y,z);bb(cx-4*s,cy-19*s);bb(cx+5*s,cy+2*s);
+  return `<ellipse cx="${f1(cx+1.8*s)}" cy="${f1(cy+.3)}" rx="${f1(3.6*s)}" ry="${f1(1.6*s)}" fill="#7A4E22" opacity=".16"/><rect x="${f1(cx-.6*s)}" y="${f1(cy-3*s)}" width="${f1(1.2*s)}" height="${f1(3*s)}" rx=".5" fill="#9B6B43"/>`
+   +`<ellipse cx="${f1(cx)}" cy="${f1(cy-10*s)}" rx="${f1(3.6*s)}" ry="${f1(8.6*s)}" fill="#3E9450"/><ellipse cx="${f1(cx-.9*s)}" cy="${f1(cy-11*s)}" rx="${f1(2.4*s)}" ry="${f1(7*s)}" fill="#5DB563"/><ellipse cx="${f1(cx-1.5*s)}" cy="${f1(cy-14.5*s)}" rx="${f1(.9*s)}" ry="${f1(2.2*s)}" fill="#A9E28D" opacity=".8"/>`;
+}
+function bushR(x,y,z,s=1,c="#4FA65B"){
+  const [cx,cy]=P(x,y,z);bb(cx-4.5*s,cy-6*s);bb(cx+4.5*s,cy+1.6*s);
+  return `<ellipse cx="${f1(cx+1.2*s)}" cy="${f1(cy+.3)}" rx="${f1(4.2*s)}" ry="${f1(1.7*s)}" fill="#7A4E22" opacity=".14"/>`
+   +`<circle cx="${f1(cx-1.8*s)}" cy="${f1(cy-2*s)}" r="${f1(2.3*s)}" fill="${c}"/><circle cx="${f1(cx+2*s)}" cy="${f1(cy-1.9*s)}" r="${f1(2.2*s)}" fill="${sh(c,-.15)}"/><circle cx="${f1(cx)}" cy="${f1(cy-3.3*s)}" r="${f1(2.7*s)}" fill="${c}"/><circle cx="${f1(cx-.8*s)}" cy="${f1(cy-4.3*s)}" r="${f1(1.4*s)}" fill="${sh(c,.3)}"/>`;
+}
+function potPlant(x,y,z,s=1,pot="#E8743B",ball=true){
+  let o=cylR(x,y,z,1.5*s,2.4*s,pal(pot),{hl:false})+`<ellipse cx="${f1(P(x,y,z+2.4*s)[0])}" cy="${f1(P(x,y,z+2.4*s)[1])}" rx="${f1(1.4*s)}" ry="${f1(.7*s)}" fill="#8A5A36"/>`;
+  const [cx,cy]=P(x,y,z+2.4*s);bb(cx-3*s,cy-8*s);
+  if(ball)o+=`<rect x="${f1(cx-.3*s)}" y="${f1(cy-2.4*s)}" width="${f1(.6*s)}" height="${f1(2.4*s)}" fill="#8A5A36"/><circle cx="${f1(cx)}" cy="${f1(cy-4.6*s)}" r="${f1(2.6*s)}" fill="#4FA65B"/><circle cx="${f1(cx-.8*s)}" cy="${f1(cy-5.4*s)}" r="${f1(1.4*s)}" fill="#7CCB6A"/>`;
+  else o+=`<path d="M${f1(cx)} ${f1(cy)}q${f1(-2.6*s)} ${f1(-2*s)} ${f1(-2.2*s)} ${f1(-4.4*s)}q${f1(1.6*s)} ${f1(1*s)} ${f1(2.2*s)} ${f1(4.4*s)}zM${f1(cx)} ${f1(cy)}q${f1(2.4*s)} ${f1(-2.4*s)} ${f1(1.8*s)} ${f1(-4.8*s)}q${f1(-1.4*s)} ${f1(1.4*s)} ${f1(-1.8*s)} ${f1(4.8*s)}zM${f1(cx)} ${f1(cy)}q${f1(-.4*s)} ${f1(-3*s)} 0 ${f1(-5.4*s)}q${f1(.6*s)} ${f1(2.6*s)} 0 ${f1(5.4*s)}z" fill="#4FA65B"/>`;
+  return o;
+}
+function flowers(x,y,z){
+  const [cx,cy]=P(x,y,z);bb(cx-3,cy-2);bb(cx+3,cy+2);const C=["#FF8FA3","#FFD15C","#FFFFFF","#FF9446","#DD5298"];
+  return `<ellipse cx="${f1(cx)}" cy="${f1(cy+.3)}" rx="3" ry="1.4" fill="#5FAE5C"/>`+[[0,0],[1.7,.5],[-1.6,.6],[.4,1.2],[-.6,-.6]].map(([u,v],i)=>`<circle cx="${f1(cx+u)}" cy="${f1(cy+v-.6)}" r=".8" fill="${C[i]}"/>`).join("");
+}
+function lamp(x,y,z){
+  const [cx,cy]=P(x,y,z);bb(cx-3.4,cy-15);bb(cx+2,cy+1);
+  return `<ellipse cx="${f1(cx+.8)}" cy="${f1(cy)}" rx="2" ry=".9" fill="#7A4E22" opacity=".15"/><ellipse cx="${f1(cx)}" cy="${f1(cy-.3)}" rx="1.3" ry=".6" fill="#3A3A48"/><rect x="${f1(cx-.45)}" y="${f1(cy-11)}" width=".9" height="10.8" rx=".45" fill="#3A3A48"/>`
+   +`<circle cx="${f1(cx)}" cy="${f1(cy-12.2)}" r="3.4" fill="#FFE49A" opacity=".3"/><rect x="${f1(cx-1.2)}" y="${f1(cy-13.8)}" width="2.4" height="2.8" rx=".8" fill="#FFF3C4" stroke="#3A3A48" stroke-width=".45"/><path d="M${f1(cx-1.6)} ${f1(cy-13.8)}q1.6-1.5 3.2 0z" fill="#3A3A48"/>`;
+}
+function tableSet(x,y,z,c="#FF6A00",tc="#FFF3E2"){
+  const ch=(cx,cy,back)=>rbox(cx,cy,z,1.9,1.9,1.9,pal(c),{r:.6,N:2,hl:false})+(back==="x"?rbox(cx-.2,cy,z+1.9,.55,1.9,2.3,pal(c),{r:.25,N:2,hl:false}):rbox(cx,cy-.2,z+1.9,1.9,.55,2.3,pal(c),{r:.25,N:2,hl:false}));
+  return ch(x-4,y-.9,"x")+ch(x-.95,y-4,"y")+cylR(x,y,z,.35,2.9,pal("#C9B8A0"),{hl:false,N:3})+cylR(x,y,z+2.9,2.3,.55,pal(tc),{N:6})
+   +`<ellipse cx="${f1(P(x+.5,y,z+3.45)[0])}" cy="${f1(P(x+.5,y,z+3.45)[1]-.4)}" rx=".7" ry=".5" fill="#fff"/>`+ch(x+2.2,y-.9,"x");
+}
+function bench(x,y,z){return rbox(x,y,z+1,5,1.6,.7,pal("#C99467"),{r:.5,hl:false})+rbox(x,y,z+1.7,5,.5,1.6,pal("#C99467"),{r:.25,hl:false})+rbox(x+.4,y+.4,z,.6,.8,1,pal("#3A3A48"),{r:.2,hl:false})+rbox(x+4,y+.4,z,.6,.8,1,pal("#3A3A48"),{r:.2,hl:false})}
+function umbrella(x,y,z,c="#FF6A00"){
+  const [cx,cy]=P(x,y,z);bb(cx-8,cy-15);bb(cx+8,cy+1.5);
+  return `<ellipse cx="${f1(cx+1.5)}" cy="${f1(cy+.3)}" rx="5" ry="2" fill="#7A4E22" opacity=".14"/><ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="1.6" ry=".7" fill="#3A3A48"/><rect x="${f1(cx-.35)}" y="${f1(cy-11)}" width=".7" height="11" rx=".35" fill="#5B5F66"/>`
+   +`<path d="M${f1(cx-7.6)} ${f1(cy-9.4)}Q${f1(cx-4)} ${f1(cy-15.4)} ${f1(cx)} ${f1(cy-15.2)}Q${f1(cx+4)} ${f1(cy-15.4)} ${f1(cx+7.6)} ${f1(cy-9.4)}Q${f1(cx)} ${f1(cy-7.2)} ${f1(cx-7.6)} ${f1(cy-9.4)}Z" fill="${c}"/>`
+   +`<path d="M${f1(cx-2.4)} ${f1(cy-8.3)}Q${f1(cx-1.8)} ${f1(cy-14.6)} ${f1(cx)} ${f1(cy-15.2)}Q${f1(cx+1.8)} ${f1(cy-14.6)} ${f1(cx+2.4)} ${f1(cy-8.3)}Z" fill="#fff" opacity=".9"/><circle cx="${f1(cx)}" cy="${f1(cy-15.4)}" r=".7" fill="#3A3A48"/>`;
+}
+function aFrame(x,y,z){ /* 立牌 */
+  return poly([P(x,y,z),P(x+3,y,z),P(x+2.6,y-1.2,z+4.6),P(x+.4,y-1.2,z+4.6)],"#3A3F70")+onY(y-.6,x+.35,z+4.1,2.3,3.2,`<rect width="2.3" height="3.2" rx=".4" fill="#2F2E6C"/><circle cx="1.15" cy="1.2" r=".75" fill="#fff"/>${gem(1.15,1.2,.55)}<rect x=".45" y="2.25" width="1.4" height=".28" rx=".14" fill="#fff" opacity=".8"/>`);
+}
+function boxes(x,y,z,s=1){const B=pal("#D9A86C");return rbox(x,y,z,4*s,4*s,3.4*s,B,{r:.5})+onY(y+4*s+.02,x+1.6*s,z+3.4*s,.8*s,3.4*s,`<rect width="${f1(.8*s)}" height="${f1(3.4*s)}" fill="#FF6A00"/>`)+rbox(x+.6*s,y+.6*s,z+3.4*s,3*s,3*s,2.6*s,B,{r:.5})}
+/* 5G 訊號波 */
+function signal(c,r0,r1,dur=2.6){
+  bb(c[0]-r1,c[1]-r1*.58);bb(c[0]+r1,c[1]+r1*.58);let s="";
+  for(let i=0;i<2;i++){const T=`dur="${dur}s" begin="${-i*dur/2}s" repeatCount="indefinite"`;
+    s+=`<ellipse class="sig" cx="${f1(c[0])}" cy="${f1(c[1])}" rx="${r0}" ry="${f1(r0*.58)}" fill="none" stroke="#FF6A00" stroke-width="1.2"><animate attributeName="rx" values="${r0};${r1}" ${T}/><animate attributeName="ry" values="${f1(r0*.58)};${f1(r1*.58)}" ${T}/><animate attributeName="stroke-opacity" values=".9;0" ${T}/></ellipse>`}
+  return s;
+}
+
+/* ---------- 圓角磁磚底座 ---------- */
+const PLINTH=["#FFF5E6","#E8C9A0","#F3DDBD"],LAWN0="#9FD27E";
+const LV={def:LAWN0,ok:"#A9DDB4",low:"#FFDF8E",no:"#D6D6DA",g:"#A9DDB4",y:"#FFDF8E",o:"#FFC394",r:"#FFB4AC"};
+function base(W,D,l,lawn){
+  let s=rbox(0,0,0,W,D,G-1.2,["#F3DDBD","#D9B585","#E8C9A0"],{r:7,N:7,hl:false})+rbox(.6,.6,G-1.2,W-1.2,D-1.2,1.2,PLINTH,{r:6.5,N:7});
+  /* 磁磚縫 */
+  let g="";for(let k=4;k<W-1;k+=4)g+=`<line x1="${k}" y1="2" x2="${k}" y2="${D-2}"/>`;for(let k=4;k<D-1;k+=4)g+=`<line x1="2" y1="${k}" x2="${W-2}" y2="${k}"/>`;
+  s+=onZ(G+.01,0,0,W,D,`<g stroke="#EAD3B2" stroke-width=".32" stroke-linecap="round">${g}</g>`);
+  /* 草皮（顏色＝庫存／人潮狀態） */
+  const t=LV[l]||LV.def;for(const [x,y,w,d] of (lawn||[[2.5,2.5,W*.42,D*.3]]))s+=rbox(x,y,G,w,d,.7,pal(t,.14),{r:3.2,N:5,hl:false});
+  return s;
+}
+function route(a,b,kind="door"){WALK.push({a,b,kind})}
+function finish(body,W,D){
+  const c=P(W/2,D/2,G),pad=3,x0=BB[0]-pad,y0=BB[1]-pad,w=BB[2]-BB[0]+pad*2,h=BB[3]-BB[1]+pad*2;
+  const dp=WALK[0]?WALK[0].a:c,ep=WALK[0]?WALK[0].b:c;
+  return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f1(x0)} ${f1(y0)} ${f1(w)} ${f1(h)}">${body}</svg>`,anchor:+((y0+h-c[1])/h*100).toFixed(2),vw:+w.toFixed(1),walk:WALK,door:[+((dp[0]-x0)/w*100).toFixed(2),+((dp[1]-y0)/h*100).toFixed(2)],dp,ep};
+}
+function finishC(body,cx,cy){
+  const pad=2,x0=BB[0]-pad,y0=BB[1]-pad,w=BB[2]-BB[0]+pad*2,h=BB[3]-BB[1]+pad*2;
+  return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f1(x0)} ${f1(y0)} ${f1(w)} ${f1(h)}">${body}</svg>`,anchor:+((y0+h-cy)/h*100).toFixed(2),vw:+w.toFixed(1),walk:[]};
+}
+const STROLL=(W,y)=>route(P(3,y??W-3.5,G),P(W-4,y??W-3.5,G),"stroll");
+
+/* ---------- 色票 ---------- */
+const CREAM=pal("#FFE9C6"),WH=pal("#FFFFFF",.07),OR=pal("#FF7A1A"),ORD=pal("#FF6A00"),PEACH=pal("#FFD3B0"),TEAL=pal("#5CC9B4"),
+  PINK=pal("#F9D5C6"),NAVY=pal("#3B3A7E"),LANT=pal("#FFEFA6"),WARM=pal("#FFDDA6");
+
+/* ================= 10 種門市造型 ================= */
+const SCENES={
+  /* 1 經典轉角店：奶油色圓角盒、內凹橘色屋頂、扇形條紋遮陽棚、屋頂立牌 */
+  classic(l){let s=base(48,48,l,[[2.5,2.5,20,11]]);
+    s+=treeR(4,9,G,1)+cypress(41,5,G,.9);
+    s+=shadow(12,12,22,20,3)+rbox(12,12,G,22,20,15,CREAM,{r:3,rim:{i:1.6,c:"#FF8A3D"}});
+    s+=onY(32.02,15.5,G+10.6,7.4,10.4,door2(7.4,10.2))+onY(32.02,24.4,G+10.8,7,7.6,shopWin(7,7.6,{counter:false,seed:2}));
+    s+=onX(34.02,29,G+11.6,13.4,8.6,shopWin(13.4,8.6,{seed:1}));
+    s+=awnY(32,14.8,G+12.6,9,3.2,2.4);
+    s+=rbox(15,21,G+15,16,1.4,6.6,ORD,{r:.7})+onY(22.42,15.6,G+21,14.8,5.4,signTxt(14.8,5.4,{rx:1.8}));
+    s+=potPlant(10.5,35,G,1)+aFrame(25,40,G)+tableSet(42,30,G)+lamp(44,40,G)+flowers(8,43,G)+potPlant(35.5,35,G,.8,"#2F2E6C",false);
+    route(P(19,34,G),P(19.5,47,G));STROLL(48);
+    return finish(s,48,48);},
+
+  /* 2 膠囊玻璃店：超圓角量體、環繞落地窗、橘色腰帶、立柱招牌 */
+  capsule(l){let s=base(48,48,l,[[2.5,2.5,16,13],[36,2.5,9.5,16]]);
+    s+=treeR(7,7,G,.95)+bushR(41,9,G,1);
+    s+=shadow(11,12,26,22,7);
+    s+=rbox(11,12,G,26,22,1.4,WH,{r:7,N:8,hl:false})+rbox(11,12,G+1.4,26,22,9.8,["#FFE4B5","#F2BD83","#FFD9A3"],{r:7,N:8,hl:false});
+    s+=onY(34.02,18,G+11.2,12,9.8,shopWin(12,9.8,{frame:"none",rx:.1,mull:[4,8],seed:3}).replace('fill="none"','fill="#FFE4B5"'));
+    s+=onX(37.02,27,G+11.2,8,9.8,shopWin(8,9.8,{frame:"none",rx:.1,mull:[4],counter:false,seed:5}).replace('fill="none"','fill="#FFE4B5"'));
+    s+=rbox(11,12,G+11.2,26,22,1,ORD,{r:7,N:8,hl:false})+rbox(11,12,G+12.2,26,22,4.8,WH,{r:7,N:8,rim:{i:2.4,c:"#F7EFE4"}});
+    s+=onY(34.02,17,G+16.4,14,3.8,signTxt(14,3.8,{bg:"none"}))+onX(37.02,26,G+16.6,6,4.2,`<circle cx="3" cy="2.1" r="2" fill="#fff"/>${gem(3,2.1,1.75)}`);
+    s+=onY(34.02,24.6,G+8.8,4.2,8.8,`<rect width="4.2" height="8.8" rx=".4" fill="#FF6A00" opacity=".9"/><rect x=".5" y=".5" width="3.2" height="8.3" rx=".3" fill="#FFE4B5"/><rect x=".5" y=".5" width="3.2" height="8.3" fill="#D5EEFB" fill-opacity=".3"/><rect x="1.9" y="3" width=".4" height="1.6" rx=".2" fill="#FF6A00"/>`);
+    s+=rbox(41,31,G,1.2,1.2,13,pal("#5B5F66"),{r:.6,hl:false})+rbox(38.6,30.7,G+12,6,1.8,6,ORD,{r:.9})+onY(32.52,39.1,G+17.5,5,5,`<rect width="5" height="5" rx="1.1" fill="#fff"/>${gem(2.5,2.5,1.9)}`);
+    s+=treeR(8,37,G,.9)+tableSet(43,22,G,"#2F2E6C")+flowers(18,44,G)+potPlant(15,37.5,G,.8);
+    route(P(26.5,35,G),P(27,47.5,G));STROLL(48);
+    return finish(s,48,48);},
+
+  /* 3 圓頂體驗館：圓筒展館、橘色大圓頂、頂部彩球 */
+  dome(l){let s=base(48,48,l,[[2.5,2.5,14,14],[34,2.5,11.5,12]]);
+    s+=treeR(6,6,G,.9)+cypress(41,6,G,.85);
+    s+=shadow(11,11,24,24,12);
+    s+=cylR(23,23,G,12.4,2,WH,{N:12,hl:false})+cylR(23,23,G+2,12.2,6,["#FFE4B5","#F2BD83","#FFD9A3"],{N:12,hl:false});
+    for(const a of [10,30,50,70])s+=pl([P(23+12.2*Math.cos(a*Math.PI/180),23+12.2*Math.sin(a*Math.PI/180),G+2),P(23+12.2*Math.cos(a*Math.PI/180),23+12.2*Math.sin(a*Math.PI/180),G+8)],"#fff",.5,.85);
+    s+=cylR(23,23,G+8,12.4,2.6,WH,{N:12});
+    s+=domeS(23,23,G+10.6,11.6,12.5,["","#FF6A00","#FF8A33"]);
+    const top=P(23,23,G+10.6);s+=gemBall([top[0],top[1]-16.2],3.6);
+    s+=shadow(18,32,10,6,2)+rbox(18,31.5,G,10,6.5,9.5,WH,{r:2.4,rim:{i:1,c:"#FF8A3D"}})+onY(38.02,19.8,G+7.4,6.4,7.4,door2(6.4,7.2))+onY(38.02,18.8,G+9.3,8.4,1.6,`<rect width="8.4" height="1.6" rx=".8" fill="#FF6A00"/>`);
+    s+=onX(28.02,37.2,G+9.2,5,2,`<text x="2.5" y="1.5" text-anchor="middle" font-family="${FONT}" font-weight="900" font-size="1.4" fill="#2F2E6C">5G 體驗</text>`);
+    s+=bench(5,35,G)+potPlant(16,41,G,.9)+potPlant(30,41,G,.9)+lamp(39,39,G)+treeR(43,30,G,.8)+flowers(36,44,G);
+    route(P(23,38.5,G),P(23,47.5,G));STROLL(48);
+    return finish(s,48,48);},
+
+
+
+
+
+
+
+
+  /* 縮小地圖用的簡化圖示 */
+  storeC(l){
+    let s=`<ellipse cx="0" cy="12" rx="17" ry="8" fill="#7A4E22" opacity=".14"/>`;bb(-17,4);bb(17,20);
+    const z=l?3:0;if(l)s+=rbox(-2,-2,0,22,22,3,pal(LV[l]),{r:5,hl:false});
+    s+=rbox(1,1,z,16,16,13,WH,{r:3,rim:{i:1.6,c:"#FF8A3D"}})+onY(17.02,4,z+9,8,7,`<rect width="8" height="7" rx="1.2" fill="#FF6A00"/><rect x=".6" y=".6" width="6.8" height="6.4" rx=".8" fill="#FFE4B5"/>`)
+     +onX(17.02,13,z+10,8,6,`<circle cx="4" cy="3" r="2.9" fill="#fff"/>${gem(4,3,2.5)}`);
+    const c=P(9,9,0);return finishC(s,c[0],c[1]);},
+  flagC(l){
+    let s=`<ellipse cx="0" cy="13" rx="18" ry="8" fill="#7A4E22" opacity=".14"/>`;bb(-18,5);bb(18,21);
+    const z=l?3:0;if(l)s+=rbox(-3,-3,0,22,22,3,pal(LV[l]),{r:6,hl:false});
+    s+=cylR(8,8,z,9,6,WH,{N:8})+domeS(8,8,z+6,8.6,9,["","#FF6A00","#FF8A33"]);
+    const t=P(8,8,z+6);s+=gemBall([t[0],t[1]-12],3.6);
+    const c=P(8,8,0);return finishC(s,c[0],c[1]);}
+};
+const STORE_STYLES=["classic","capsule"], FLAG_STYLES=["dome"];
+const STYLE_NAME={classic:"經典轉角店",capsule:"膠囊玻璃店",dome:"圓頂體驗館",terrace:"雙層露台店",container:"貨櫃快閃店",arcade:"騎樓街屋",beacon:"5G 燈塔店",phone:"巨型手機店",tower:"旗艦高塔",pavilion:"旗艦展館"};
+function styleOf(s){
+  if(s.style)return s.style;
+  if(s.src==="demo"){const i=+s.id;return s.flag?FLAG_STYLES[0]:STORE_STYLES[i%2]}
+  const h=hash(String(s.key)+"style");return s.flag?FLAG_STYLES[0]:STORE_STYLES[h%2];
+}
+
+/* ================= 3D 小人（Q 版大頭、圓身、擺腿走路） ================= */
+const SHIRT=["#FF6A00","#5B7FD1","#FFBA0D","#22C2A2","#E5484D","#7A5CC4","#2F2E6C","#F28BA8","#FFFFFF"],
+  PANTS=["#2F2E6C","#4F5257","#3B5A7A","#6B4F3A"],SKIN=["#FFDCC2","#F1C29C","#D39A6E"],HAIR=["#2A2220","#4A3020","#6B4428","#1A1A1A","#C98A4A"];
+function personFig(h,bag){
+  const sw=SHIRT[h%9],pa=PANTS[(h>>3)%4],sk=SKIN[(h>>5)%3],ha=HAIR[(h>>7)%5],bun=(h>>11)%3===0;
+  const leg=(x,b)=>`<g transform="translate(${x} -3.6)"><rect x="-.85" y="0" width="1.7" height="3.6" rx=".85" fill="${pa}"><animateTransform attributeName="transform" type="skewX" values="-20;20;-20" dur=".6s" begin="${b}s" repeatCount="indefinite"/></rect></g>`;
+  return `<ellipse cx=".8" cy="0" rx="3.4" ry="1.4" fill="#7A4E22" opacity=".22"/><g><animateTransform attributeName="transform" type="translate" values="0 0;0 -.7;0 0" dur=".3s" repeatCount="indefinite"/>${leg(-1,0)}${leg(1,-.3)}`
+   +`<rect x="-2.8" y="-9.4" width="5.6" height="6.6" rx="2.6" fill="${sw}"/><rect x=".8" y="-9.2" width="2" height="6.2" rx="1" fill="#000" opacity=".1"/>`
+   +(bag?`<path d="M2.6 -6.6q1-1.6 2 0" fill="none" stroke="#C2531A" stroke-width=".55"/><rect x="2.1" y="-6.6" width="3.1" height="3.4" rx=".7" fill="#FF6A00"/><circle cx="3.65" cy="-4.9" r=".75" fill="#fff"/>`:"")
+   +`<circle cx="0" cy="-13.2" r="4.1" fill="${sk}"/><path d="M-4.1 -13a4.1 4.1 0 0 1 8.2 0q-1.2-2.1-4.1-2.1q-2.9 0-4.1 2.1z" fill="${ha}"/>`
+   +(bun?`<circle cx="-.6" cy="-17.6" r="1.6" fill="${ha}"/>`:"")
+   +`<circle cx="1.6" cy="-12.6" r=".42" fill="#2b1d10"/><circle cx="-.6" cy="-12.6" r=".42" fill="#2b1d10"/><circle cx="2.7" cy="-11.4" r=".75" fill="#FF8FA3" opacity=".55"/></g>`;
+}
+/* 地圖上的行人：走進門市、提袋走出來、沿街經過，偶爾從門市後方繞過（會被建築遮住）。
+   位移以「基準像素」計算，CSS 再乘上 --ms，放大地圖時人和門市一起變大。 */
+function mapWalkers(s,sc,basePx){
+  if(!sc.door)return {};
+  const k=basePx/sc.vw,d=[-.866,.5],e=[.866,.5],a=sc.dp,
+    dEdge=Math.hypot(sc.ep[0]-a[0],sc.ep[1]-a[1]),doorY=(2*(a[1]+G)-a[0]/C30)/2;
+  const n=3+hash(s.key+"ppl")%2;let fr="",bk="";
+  for(let i=0;i<n;i++){
+    const h=hash(s.key+"w"+i),kind=i===0?"in":["in","out","pass","behind"][(h>>2)%4],sg=(h>>15)&1?1:-1;
+    let A,B;
+    if(kind==="in"||kind==="out"){const f=dEdge+30+(h>>6)%50,F=[d[0]*f,d[1]*f];[A,B]=kind==="in"?[F,[0,0]]:[[0,0],F]}
+    else{const o=kind==="pass"?dEdge+4+(h>>9)%7:-(doorY+5+(h>>9)%5),L=40+(h>>12)%30;
+      A=[d[0]*o-e[0]*L*sg,d[1]*o-e[1]*L*sg];B=[d[0]*o+e[0]*L*sg,d[1]*o+e[1]*L*sg]}
+    A=A.map(v=>v*k);B=B.map(v=>v*k);
+    const dist=Math.hypot(B[0]-A[0],B[1]-A[1]),dur=+(dist/10/.72+(h%5)).toFixed(1),flip=B[0]<A[0];
+    const el=`<i class="mw" style="--x0:${A[0].toFixed(1)}px;--y0:${A[1].toFixed(1)}px;--x1:${B[0].toFixed(1)}px;--y1:${B[1].toFixed(1)}px;animation-duration:${dur}s;animation-delay:-${((h>>4)%(dur*10)/10).toFixed(1)}s"><svg viewBox="-6.5 -19.5 13 21.5"${flip?' style="transform:scaleX(-1)"':""}>${personFig(h,kind==="out"&&(h>>3)%3!==0)}</svg></i>`;
+    if(kind==="behind")bk+=el;else fr+=el;
+  }
+  const pos=`left:${sc.door[0]}%;top:${sc.door[1]}%`;
+  return {front:`<div class="mwalk front" style="${pos}">${fr}</div>`,back:bk?`<div class="mwalk back" style="${pos}">${bk}</div>`:""};
+}
+const sceneCache={},BASE_W={store:156,flag:192};
+function scene(kind,l=""){const k=kind+"|"+l;if(!sceneCache[k]){BB=[1e9,1e9,-1e9,-1e9];WALK=[];sceneCache[k]=SCENES[kind](l)}return sceneCache[k]}
+function storeSVG(s,l=""){return scene(styleOf(s),l).svg}
+function markerHTML(s,o){
+  const kind=s.flag?"flag":"store",full=scene(styleOf(s),o.lvl),comp=scene(kind+"C",o.lvl),wk=o.dim?{}:mapWalkers(s,full,s.flag?BASE_W.flag:BASE_W.store);
+  const badge=o.label!==""?`<div class="iso-badge ${o.lvl?"b-"+o.lvl:""}">${o.label}</div>`:"";
+  return `<div class="iso-mk k-${kind} ${o.lvl?"l-"+o.lvl:""} ${o.active?"active":""} ${o.dim?"dim":""}" style="--a-full:${full.anchor}%;--a-comp:${comp.anchor}%;--vw:${full.vw}">
+    ${o.heat?`<div class="heat h-${o.heat}"></div>`:""}${wk.back||""}<div class="iso-body"><div class="iso-full">${full.svg}</div><div class="iso-comp">${comp.svg}</div></div>${wk.front||""}${badge}<div class="iso-name">${esc(s.name)}</div></div>`;
+}
+function styleGallery(){
+  return `<div class="section-t">門市造型圖鑑 · 3 款</div><div class="sgrid">${[...STORE_STYLES,...FLAG_STYLES].map(k=>{const sc=scene(k);
+    return `<div class="scard">${sc.svg}<b>${STYLE_NAME[k]}</b><span>${FLAG_STYLES.includes(k)?"旗艦／大型門市":"一般門市"}</span></div>`}).join("")}</div>`;
+}
+
+(()=>{const g=document.getElementById("brandGem");if(g)g.innerHTML=`<svg viewBox="-1.05 -1.05 2.1 2.1">${gem(0,0,1)}</svg>`})();
+function htmlEl(h){const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstElementChild}
+
+/* ================= 狀態與工具 ================= */
+const state={tab:"stores",city:"",openNow:false,svc:new Set(),sort:"dist",q:"",me:{lat:25.0330,lng:121.5654},
+  cat:"phone",prod:null,color:null,cap:null,active:null,bookings:[],favs:new Set()};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const isMobile=()=>matchMedia("(max-width:860px)").matches;
+function dist(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+const fmtD=d=>d<1?`${Math.round(d*1000)} m`:`${d.toFixed(d<10?1:0)} km`;
+function isOpen(s){if(s.src==="google")return s.openNow===true;const [o,c]=s.hours.split("-").map(t=>{const [h,m]=t.split(":").map(Number);return h*60+m});const n=new Date(),m=n.getHours()*60+n.getMinutes();return m>=o&&m<c}
+function openLabel(s){if(s.src==="google"&&s.openNow===undefined)return["closed","營業時間未提供"];return isOpen(s)?["open","營業中"]:["closed",s.src==="google"?"非營業時間":"已打烊"]}
+function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),2800)}
+const I=(d,w=18)=>`<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICON={
+ store:I('<path d="M3 9l1.5-5h15L21 9M4 9v11h16V9M3 9h18M9 20v-6h6v6"/>',22),
+ bag:I('<path d="M5 8h14l-1 13H6L5 8zM9 8V6a3 3 0 0 1 6 0v2"/>',22),
+ cal:I('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',22),
+ grid:I('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',22),
+ pin:I('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
+ clock:I('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+ phone:I('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>'),
+ nav:I('<path d="m3 11 18-8-8 18-2-8-8-2z"/>'),
+ ticket:I('<path d="M3 8a2 2 0 0 0 0 4 2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z"/>'),
+ back:I('<path d="m15 18-6-6 6-6"/>',20), heart:I('<path d="M12 21s-7-4.4-9.3-9A5.4 5.4 0 0 1 12 6a5.4 5.4 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9z"/>',20),
+ x:I('<path d="M18 6 6 18M6 6l12 12"/>',18)
+};
+
+/* ================= 地名與路名聚光 =================
+   遠處：只顯示縣市名（縮小時）或區名（放大時）
+   游標附近（手機為地圖可見區中心）：逐步顯示路名與更多細節，越靠近越清楚 */
+const AREA_CITY=[["基隆市",25.13,121.74],["台北市",25.06,121.55],["新北市",24.99,121.45],["桃園市",24.95,121.24],["新竹市",24.80,120.96],["新竹縣",24.74,121.12],
+ ["苗栗縣",24.50,120.85],["台中市",24.17,120.68],["彰化縣",24.02,120.48],["南投縣",23.86,120.92],["雲林縣",23.71,120.40],["嘉義市",23.48,120.45],["嘉義縣",23.38,120.62],
+ ["台南市",23.06,120.27],["高雄市",22.72,120.40],["屏東縣",22.55,120.56],["宜蘭縣",24.70,121.70],["花蓮縣",23.86,121.52],["台東縣",22.90,121.07],
+ ["澎湖縣",23.57,119.59],["金門縣",24.44,118.37],["連江縣",26.16,119.95]];
+const AREA_DIST=[
+ ["中正區",25.032,121.519],["大同區",25.063,121.513],["中山區",25.069,121.533],["松山區",25.050,121.558],["大安區",25.026,121.543],["萬華區",25.029,121.497],
+ ["信義區",25.031,121.571],["士林區",25.093,121.525],["北投區",25.132,121.501],["內湖區",25.069,121.589],["南港區",25.055,121.607],["文山區",24.989,121.570],
+ ["板橋區",25.011,121.459],["三重區",25.062,121.488],["中和區",24.999,121.499],["永和區",25.008,121.516],["新莊區",25.036,121.450],["新店區",24.967,121.541],
+ ["土城區",24.972,121.444],["蘆洲區",25.085,121.473],["汐止區",25.063,121.659],["樹林區",24.991,121.420],["淡水區",25.170,121.441],["三峽區",24.934,121.369],
+ ["林口區",25.077,121.391],["鶯歌區",24.955,121.354],["五股區",25.083,121.438],["泰山區",25.059,121.431],["深坑區",25.002,121.616],
+ ["桃園區",24.993,121.301],["中壢區",24.965,121.225],["平鎮區",24.946,121.218],["八德區",24.928,121.284],["楊梅區",24.907,121.146],["蘆竹區",25.045,121.292],
+ ["龜山區",24.993,121.338],["大園區",25.064,121.196],["龍潭區",24.864,121.216],["大溪區",24.880,121.287],
+ ["竹北市",24.839,121.004],["竹東鎮",24.738,121.090],["湖口鄉",24.902,121.044],["新竹東區",24.800,120.990],["新竹北區",24.815,120.963],["香山區",24.776,120.912],
+ ["苗栗市",24.561,120.821],["頭份市",24.688,120.913],
+ ["中區",24.142,120.680],["台中東區",24.137,120.697],["台中南區",24.121,120.664],["台中西區",24.141,120.666],["台中北區",24.159,120.682],["西屯區",24.181,120.627],
+ ["南屯區",24.138,120.643],["北屯區",24.182,120.686],["豐原區",24.252,120.722],["大里區",24.099,120.678],["太平區",24.126,120.718],["烏日區",24.104,120.623],
+ ["沙鹿區",24.233,120.566],["大雅區",24.229,120.648],["潭子區",24.212,120.705],["霧峰區",24.062,120.700],
+ ["彰化市",24.081,120.538],["員林市",23.959,120.574],["鹿港鎮",24.057,120.434],["南投市",23.916,120.684],["斗六市",23.711,120.543],["嘉義市",23.480,120.449],
+ ["中西區",22.992,120.199],["台南東區",22.981,120.224],["台南南區",22.960,120.188],["台南北區",23.008,120.209],["安平區",23.000,120.166],["安南區",23.047,120.185],
+ ["永康區",23.026,120.257],["仁德區",22.972,120.252],["歸仁區",22.967,120.294],["新營區",23.310,120.317],["善化區",23.132,120.297],
+ ["新興區",22.631,120.310],["前金區",22.627,120.294],["苓雅區",22.622,120.312],["鹽埕區",22.624,120.285],["鼓山區",22.651,120.274],["旗津區",22.590,120.272],
+ ["前鎮區",22.596,120.318],["三民區",22.646,120.324],["左營區",22.690,120.295],["楠梓區",22.728,120.326],["小港區",22.565,120.355],["鳳山區",22.627,120.357],
+ ["仁武區",22.701,120.348],["大寮區",22.605,120.395],["岡山區",22.797,120.296],
+ ["屏東市",22.672,120.488],["基隆市",25.128,121.742],["宜蘭市",24.757,121.753],["羅東鎮",24.677,121.767],["花蓮市",23.976,121.604],["台東市",22.755,121.144]];
+const Spotlight={
+  init(m){
+    this.m=m;this.cursor=null;this._on=undefined;
+    /* 同一組路名圖磚疊三層，各自裁成同心圓：內圈全清楚、外圈半透明、最外圈淡淡的 */
+    this.rings=[[1,1],[1.7,.5],[2.5,.2]].map(([k,op],i)=>{
+      const name="lbl"+i,p=m.createPane(name);p.classList.add("lbl-pane");p.style.zIndex=String(450-i);p.style.opacity=op;
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",{pane:name,maxZoom:19,subdomains:"abcd"}).addTo(m);
+      return {p,k};
+    });
+    const ap=m.createPane("area");ap.classList.add("area-pane");ap.style.zIndex="470";
+    const mk=(n,lat,lng,cls)=>L.marker([lat,lng],{pane:"area",interactive:false,keyboard:false,
+      icon:L.divIcon({className:"",iconSize:[0,0],html:`<div class="area-lbl ${cls}">${n.replace(/^(台中|台南|新竹)(?=[東西南北]區)/,"")}</div>`})});
+    this.cities=L.layerGroup(AREA_CITY.map(a=>mk(...a,"city")));
+    this.dists=AREA_DIST.map(a=>mk(...a,""));
+    this.distGroup=L.layerGroup(this.dists);
+    const c=m.getContainer();
+    c.addEventListener("mousemove",e=>{if(isMobile())return;this.cursor=m.mouseEventToContainerPoint(e);this.req()});
+    c.addEventListener("mouseleave",()=>{this.cursor=null;this.req()});
+    m.on("move zoom zoomend resize viewreset",()=>this.req());
+    window.addEventListener("resize",()=>this.req());
+    this.update();
+  },
+  req(){if(this._raf)return;this._raf=requestAnimationFrame(()=>{this._raf=0;this.update()})},
+  /* 沒有游標時：桌機取面板右側地圖中心，手機取抽屜上方可見地圖中心 */
+  center(){
+    const s=this.m.getSize();
+    if(isMobile()){const top=70,bot=sheetH()+64;return L.point(s.x/2,top+Math.max(40,(s.y-top-bot)/2))}
+    return L.point(432+(s.x-432)/2,88+(s.y-88)/2);
+  },
+  radius(){const z=this.m.getZoom(),base=isMobile()?105:150;return base*Math.max(.85,Math.min(1.55,.85+(z-11)*.14))},
+  update(){
+    const m=this.m;if(!m)return;
+    const z=m.getZoom(),on=z>=11,c=this.cursor||this.center(),R=this.radius();
+    const pos=L.DomUtil.getPosition(m.getPane("mapPane"));
+    for(const {p,k} of this.rings){
+      p.style.display=on?"":"none";
+      if(on)p.style.clipPath=p.style.webkitClipPath=`circle(${Math.round(R*k)}px at ${Math.round(c.x-pos.x)}px ${Math.round(c.y-pos.y)}px)`;
+    }
+    if(on!==this._on){this._on=on;
+      if(on){m.removeLayer(this.cities);this.distGroup.addTo(m)}else{m.removeLayer(this.distGroup);this.cities.addTo(m)}}
+    if(!on)return;
+    /* 聚光圈內由路名圖磚顯示區名，自訂的區名淡出避免重疊 */
+    const sz=m.getSize();
+    for(const d of this.dists){
+      const el=d.getElement();if(!el||!el.firstChild)continue;
+      const pt=m.latLngToContainerPoint(d.getLatLng());
+      if(pt.x<-80||pt.y<-40||pt.x>sz.x+80||pt.y>sz.y+40)continue;
+      const dd=pt.distanceTo(c);
+      el.firstChild.style.opacity=dd<R*1.05?"0":dd<R*1.8?((dd-R*1.05)/(R*.75)).toFixed(2):"1";
+    }
+  }
+};
+
+/* ================= 地圖轉接層：示意（Leaflet） ================= */
+const LeafletMap={
+  init(){
+    document.body.classList.add("demo","engine-l");
+    this.m=L.map("map",{zoomControl:false,attributionControl:true}).setView([23.75,120.95],8);
+    /* 底圖：不含任何文字，道路為白色 */
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:19,subdomains:"abcd",attribution:"© OpenStreetMap © CARTO"}).addTo(this.m);
+    this.mk={};
+    this.me=L.marker([state.me.lat,state.me.lng],{icon:L.divIcon({className:"",html:'<div class="me-dot"></div>',iconSize:[0,0]}),zIndexOffset:-1000}).addTo(this.m);
+    this.m.on("zoom zoomend",()=>setZoomClass(this.m.getZoom()));setZoomClass(this.m.getZoom());
+    this.m.on("move zoom zoomend resize",()=>Declutter.req());RoadFocus.init(this.m);
+    Spotlight.init(this.m);
+  },
+  setMe(lat,lng){this.me.setLatLng([lat,lng])},
+  upsert(s,html,active){
+    const icon=L.divIcon({className:"",html,iconSize:[0,0]});
+    let m=this.mk[s.id];
+    if(!m){m=L.marker([s.lat,s.lng],{icon,riseOnHover:true}).addTo(this.m);m.on("click",()=>openDetail(s.id));this.mk[s.id]=m}else m.setIcon(icon);
+    m.setZIndexOffset(active?10000:0);
+  },
+  flyTo(lat,lng,z){this.m.flyTo([lat,lng],Math.max(this.m.getZoom(),z),{duration:.7})},
+  fit(list){if(list.length)this.m.flyToBounds(L.latLngBounds(list.map(s=>[s.lat,s.lng])).pad(.3),{maxZoom:14,duration:.7,paddingTopLeft:isMobile()?[0,0]:[420,0]})},
+  zoom(d){d>0?this.m.zoomIn():this.m.zoomOut()},
+  getView(){const c=this.m.getCenter();return {lat:c.lat,lng:c.lng,zoom:this.m.getZoom()}},
+  setView(v){this.m.flyTo([v.lat,v.lng],v.zoom,{duration:.7})},
+  px(lat,lng){return this.m.latLngToContainerPoint([lat,lng])},
+  el(id){const m=this.mk[id],e=m&&m.getElement();return e&&e.querySelector(".iso-mk")},
+  resize(){this.m.invalidateSize();Declutter.req()}
+};
+
+/* ================= 地圖轉接層：Google 地圖（向量 3D） ================= */
+const GoogleMap={
+  async init(){
+    document.body.classList.add("engine-g");
+    const {Map,RenderingType}=await google.maps.importLibrary("maps");
+    const {AdvancedMarkerElement}=await google.maps.importLibrary("marker");
+    await google.maps.importLibrary("places");
+    this.AME=AdvancedMarkerElement;this.mk={};
+    this.m=new Map(document.getElementById("map"),{center:state.me,zoom:16,mapId:MAP_ID,renderingType:RenderingType.VECTOR,
+      tilt:0,heading:0,disableDefaultUI:true,clickableIcons:false,gestureHandling:"greedy",isFractionalZoomEnabled:true});
+    this.me=new AdvancedMarkerElement({map:this.m,position:state.me,content:htmlEl('<div class="me-dot" style="transform:translateY(50%)"></div>'),zIndex:1});
+    this.m.addListener("zoom_changed",()=>setZoomClass(this.m.getZoom()));setZoomClass(16);RoadFocus.init(this.m);
+    this.ov=new google.maps.OverlayView();this.ov.onAdd=()=>{};this.ov.onRemove=()=>{};this.ov.draw=()=>Declutter.req();this.ov.setMap(this.m);
+    this.m.addListener("bounds_changed",()=>Declutter.req());
+    this.m.addListener("tilt_changed",()=>$("#tiltBtn").classList.toggle("on",this.m.getTilt()>5));
+    let first=true;
+    this.m.addListener("idle",()=>{
+      if(first){first=false;
+        if(this.m.getRenderingType&&this.m.getRenderingType()!=="VECTOR")setTimeout(()=>toast("這個 Map ID 不支援 3D 傾斜，請在設定中填入向量地圖的 Map ID"),3200);
+        searchArea(true);loadPinned();return}
+      autoSearch();
+    });
+  },
+  setMe(lat,lng){this.me.position={lat,lng}},
+  upsert(s,html,active){
+    const el=htmlEl(html);let m=this.mk[s.id];
+    if(!m){m=new this.AME({map:this.m,position:{lat:s.lat,lng:s.lng},content:el,gmpClickable:true});m.addEventListener("gmp-click",()=>openDetail(s.id));this.mk[s.id]=m}
+    else m.content=el;
+    m.zIndex=active?100000:Math.round((90-s.lat)*1000);
+  },
+  hush(){this.quiet=true;clearTimeout(this._q);this._q=setTimeout(()=>this.quiet=false,1400)},
+  camera(to,ms=650){
+    const m=this.m,from={tilt:m.getTilt()||0,heading:m.getHeading()||0};
+    let dh=((to.heading??from.heading)-from.heading+540)%360-180;
+    const t0=performance.now();this.hush();
+    const step=t=>{const k=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-k,3);
+      m.moveCamera({tilt:from.tilt+((to.tilt??from.tilt)-from.tilt)*e,heading:from.heading+dh*e});if(k<1)requestAnimationFrame(step)};
+    requestAnimationFrame(step);
+  },
+  toggle3D(){this.m.getTilt()>5?this.camera({tilt:0,heading:0}):this.camera({tilt:TILT_3D,heading:HEADING_3D})},
+  rotate(d){this.camera({heading:(this.m.getHeading()||0)+d})},
+  flyTo(lat,lng,z){this.hush();this.m.panTo({lat,lng});if(this.m.getZoom()<z)this.m.setZoom(z);if(isMobile())setTimeout(()=>this.m.panBy(0,Math.round(sheetH()/2)),350)},
+  fit(list){if(!list.length)return;this.hush();
+    if(list.length===1){this.m.panTo({lat:list[0].lat,lng:list[0].lng});this.m.setZoom(16);return}
+    const b=new google.maps.LatLngBounds();list.forEach(s=>b.extend({lat:s.lat,lng:s.lng}));
+    this.m.fitBounds(b,isMobile()?{top:90,bottom:Math.round(sheetH())+30,left:40,right:40}:{top:100,bottom:60,left:440,right:80})},
+  zoom(d){this.m.setZoom(Math.round(this.m.getZoom()+d))},
+  getView(){const c=this.m.getCenter();return {lat:c.lat(),lng:c.lng(),zoom:this.m.getZoom()}},
+  setView(v){this.hush();this.m.panTo({lat:v.lat,lng:v.lng});this.m.setZoom(v.zoom);setTimeout(()=>searchArea(true),900)},
+  px(lat,lng){const pr=this.ov&&this.ov.getProjection();if(!pr)return null;const p=pr.fromLatLngToContainerPixel(new google.maps.LatLng(lat,lng));return p&&{x:p.x,y:p.y}},
+  el(id){const m=this.mk[id];return m&&m.content},
+  resize(){Declutter.req()}
+};
+/* 門市防重疊＋焦點淡化：
+   1) 依「離視覺焦點的距離」排優先序，焦點附近的門市保留完整 3D 模型；會和已放置門市交疊的，改成小圖示。
+   2) 離焦點越遠越淡；被左側面板、頂部列、右側圖層按鈕擋住的門市幾乎透明，不干擾閱讀。 */
+const Declutter={
+  req(){if(this._raf||!MAP||!MAP.px)return;this._raf=requestAnimationFrame(()=>{this._raf=0;this.run()})},
+  uiRects(mr){
+    return ["#panel",".brand",".search","#layers",".zoom-group","#layerbar .lb-card","#bnav"].map(q=>document.querySelector(q)).filter(e=>e&&e.offsetParent!==null)
+      .map(e=>{const r=e.getBoundingClientRect();return {l:r.left-mr.left-10,t:r.top-mr.top-10,r:r.right-mr.left+10,b:r.bottom-mr.top+10}}).filter(r=>r.r>r.l&&r.b>r.t);
+  },
+  run(){
+    const mapEl=document.getElementById("map");if(!mapEl)return;
+    const mr=mapEl.getBoundingClientRect(),far=mapEl.classList.contains("z-far"),ms=parseFloat(getComputedStyle(mapEl).getPropertyValue("--ms"))||1;
+    const f=RoadFocus.el?(RoadFocus.cur||RoadFocus.center()):{x:mr.width/2,y:mr.height/2},R=parseFloat(mapEl.style.getPropertyValue("--fr"))||230;
+    const ui=this.uiRects(mr),items=[];
+    for(const s of STORES){
+      const el=MAP.el&&MAP.el(s.id);if(!el)continue;
+      const p=MAP.px(s.lat,s.lng);if(!p||p.x<-300||p.y<-300||p.x>mr.width+300||p.y>mr.height+300){el.classList.remove("mini");continue}
+      const w=far?(s.flag?30:26):(s.flag?BASE_W.flag:BASE_W.store)*ms;
+      items.push({s,el,p,rx:w*.44,ry:w*.26,h:w*.95,d:Math.hypot(p.x-f.x,p.y-f.y),act:state.active===s.id,dim:el.classList.contains("dim")});
+    }
+    for(const it of items)it.k=it.d-(it.el.classList.contains("mini")?0:R*.45);/* 遲滯：已是完整模型的稍微優先，避免游標移動時閃爍 */
+    items.sort((a,b)=>(b.act-a.act)||(a.dim-b.dim)||(a.k-b.k));
+    const placed=[];
+    for(const it of items){
+      let mini=false;
+      if(!far&&!it.act){for(const q of placed){const ax=Math.abs(it.p.x-q.p.x),ay=Math.abs(it.p.y-q.p.y),sx=it.rx+q.rx,sy=it.ry+q.ry;
+        /* 菱形底座交疊，或其中一棟的建築本體擋到另一棟 */
+        if(ax/sx+ay/sy<.94||(ax<sx*.55&&ay<Math.max(it.h,q.h)*.85)){mini=true;break}}}
+      it.el.classList.toggle("mini",mini);
+      if(!mini)placed.push(it);
+      /* 透明度：焦點內 1，往外漸淡到 .35；被介面擋住 .1 */
+      const box={l:it.p.x-it.rx,r:it.p.x+it.rx,t:it.p.y-(mini?30:it.h),b:it.p.y+it.ry};
+      let cov=0;const A=(box.r-box.l)*(box.b-box.t);
+      for(const r of ui){const ix=Math.max(0,Math.min(box.r,r.r)-Math.max(box.l,r.l)),iy=Math.max(0,Math.min(box.b,r.b)-Math.max(box.t,r.t));cov=Math.max(cov,ix*iy/A)}
+      const k=Math.min(1,Math.max(0,(it.d-R*1.3)/(R*2)));
+      let o=it.act?1:1-k*.4;if(cov>.15)o=Math.min(o,.1+(1-Math.min(1,cov))*.3);
+      it.el.style.setProperty("--fo",o.toFixed(2));
+    }
+  }
+};
+/* Google 地圖聚焦：跟著滑鼠移動（平滑跟隨），手機或滑鼠離開時回到可見地圖中心 */
+const RoadFocus={
+  init(m){this.m=m;this.el=document.getElementById("map");this.t=null;this.cur=null;
+    this.el.addEventListener("mousemove",e=>{if(isMobile())return;const r=this.el.getBoundingClientRect();this.t={x:e.clientX-r.left,y:e.clientY-r.top};this.req()});
+    this.el.addEventListener("mouseleave",()=>{this.t=null;this.req()});
+    addEventListener("resize",()=>this.req());this.req()},
+  center(){const W=this.el.clientWidth,H=this.el.clientHeight;
+    if(isMobile()){const top=70,bot=sheetH()+64;return {x:W/2,y:top+Math.max(40,(H-top-bot)/2)}}
+    return {x:432+(W-432)/2,y:88+(H-88)/2}},
+  req(){if(this._raf||!this.el)return;this._raf=requestAnimationFrame(()=>{this._raf=0;this.step()})},
+  step(){const g=this.t||this.center();if(!this.cur)this.cur={...g};
+    this.cur.x+=(g.x-this.cur.x)*.22;this.cur.y+=(g.y-this.cur.y)*.22;
+    const z=this.m.getZoom?this.m.getZoom():15,R=(isMobile()?160:230)*Math.max(.85,Math.min(1.6,.85+(z-12)*.15));
+    const s=this.el.style;s.setProperty("--fx",this.cur.x.toFixed(1)+"px");s.setProperty("--fy",this.cur.y.toFixed(1)+"px");s.setProperty("--fr",R.toFixed(0)+"px");
+    Declutter.req();
+    if(Math.abs(g.x-this.cur.x)+Math.abs(g.y-this.cur.y)>.5)this.req()}
+};
+/* 門市圖示縮放倍率：每一級縮放 ×1.6（z13 0.39、z14 0.63、z15 1、z16 1.6、z17 2.6、z18 4.1，上限 5）；z13 以下改用小圖示，畫面不雜 */
+function markerScale(z){return Math.max(.36,Math.min(5,Math.pow(1.6,z-15)))}
+function setZoomClass(z){const el=$("#map");if(!el)return;el.classList.toggle("z-far",z<13);el.classList.toggle("z-mid",z>=13&&z<14.5);RoadFocus.req();el.style.setProperty("--ms",markerScale(z).toFixed(3))}
+
+/* ---------- Google Places：搜尋台灣大哥大門市 ---------- */
+const NAME_RE=/台灣大哥大|臺灣大哥大|台哥大|myfone|taiwan\s*mobile/i;
+/* 排除非門市地點：總公司、辦公室、機房、客服等 */
+const NOT_STORE_RE=/總公司|總部|辦公|企業(客戶|服務)|營運中心|客服(中心|專線)|機房|基地台|倉儲|物流|大樓|園區|研發|訓練/;
+/* 門市名稱關鍵字；名稱沒有這些字時，改看 Google 的店家類型 */
+const STORE_NAME_RE=/門市|服務中心|直營|加盟|專賣|通訊|特約|旗艦|體驗|店$/;
+const STORE_TYPES=["cell_phone_store","electronics_store","store","telecommunications_service_provider","shopping_mall"];
+const OFFICE_TYPES=["corporate_office","establishment_office"];
+/* 一定要顯示的門市（Google 區域搜尋不一定排得到，額外指名抓取） */
+const PINNED_STORES=["台灣大哥大數位生活台北文創直營服務中心"];
+/* 名稱只有品牌（例如「台灣大哥大」「Taiwan Mobile」）通常是總公司或辦公室，不算門市；
+   名稱必須帶有門市字眼（門市／服務中心／直營／加盟／通訊／…店）才收錄 */
+function isStorePlace(p){
+  const n=(p.displayName||"").trim();
+  if(!NAME_RE.test(n)||NOT_STORE_RE.test(n))return false;
+  if(PINNED_STORES.some(x=>n.replace(/臺/g,"台")===x))return true;
+  const rest=n.replace(NAME_RE,"").replace(/[\s()（）\-–·．.]/g,"");
+  return STORE_NAME_RE.test(rest);
+}
+const FIELDS=["id","displayName","primaryType","types","formattedAddress","location","regularOpeningHours","utcOffsetMinutes","nationalPhoneNumber","googleMapsURI","businessStatus"];
+function cleanAddr(a){return (a||"").replace(/^\d+/,"").replace(/^(台灣|臺灣)/,"").replace(/^\d+/,"").replace(/臺/g,"台").trim()}
+function openFromText(t){
+  if(!t)return undefined;if(/24\s*小時/.test(t))return true;if(/休息|休業|Closed/i.test(t))return false;
+  const n=new Date(),m=n.getHours()*60+n.getMinutes();let found=false;
+  for(const r of t.matchAll(/(\d{1,2}):(\d{2})\s*[–\-~至]\s*(\d{1,2}):(\d{2})/g)){found=true;
+    const a=+r[1]*60+ +r[2];let b=+r[3]*60+ +r[4];if(b<=a)b+=1440;if(m>=a&&m<b)return true}
+  return found?false:undefined;
+}
+function fromPlace(p,open){
+  const addr=cleanAddr(p.formattedAddress),city=(addr.match(/^(.{2}[市縣])/)||[])[1]||"";
+  const wk=p.regularOpeningHours?.weekdayDescriptions||[];
+  const today=(wk[(new Date().getDay()+6)%7]||"").replace(/^[^:：]+[:：]\s*/,"");
+  const name=(p.displayName||"").replace(/臺/g,"台");
+  if(open===undefined)open=openFromText(today);
+  return {id:STORES.length,key:p.id,src:"google",placeId:p.id,name,city,addr,lat:p.location.lat(),lng:p.location.lng(),
+    hours:today||"營業時間未提供",week:wk,openNow:open,svc:Object.keys(SVC).filter(k=>k==="trade"||k==="pickup"||hash(p.id+k)%3===0),
+    flag:/旗艦/.test(name),phone:p.nationalPhoneNumber||"未提供",gUrl:p.googleMapsURI};
+}
+async function gSearch(textQuery,restrict){
+  const {Place}=await google.maps.importLibrary("places");
+  const req={textQuery,fields:FIELDS,maxResultCount:20,language:"zh-TW",region:"tw"};
+  if(restrict)req.locationRestriction=restrict;
+  const {places}=await Place.searchByText(req);
+  let added=0;
+  for(const p of places){
+    if(!isStorePlace(p))continue;
+    if(p.businessStatus&&String(p.businessStatus)!=="OPERATIONAL")continue;
+    if(STORES.some(s=>s.placeId===p.id))continue;
+    let open;try{open=await p.isOpen()}catch(e){}
+    STORES.push(fromPlace(p,open));added++;
+  }
+  refreshAll();return {added,total:places.length};
+}
+function setBusy(b,text){GoogleMap.busy=b;pill(b?(text||"正在載入附近門市…"):"",b)}
+/* 狀態小膠囊（取代「搜尋這個區域」按鈕） */
+let _pillT;function pill(t,spin,ms){const el=$("#areaBtn");clearTimeout(_pillT);el.classList.toggle("busy",!!spin);el.classList.toggle("show",!!t);if(t)el.querySelector("span").textContent=t;if(ms)_pillT=setTimeout(()=>el.classList.remove("show"),ms)}
+/* 移動或縮放地圖後自動載入附近門市；已搜尋過、且縮放程度相近的範圍不重複查詢 */
+const AUTO_MIN_ZOOM=12;let _autoT,_autoAgain=false;const searched=[];
+function autoSearch(){
+  clearTimeout(_autoT);_autoT=setTimeout(()=>{
+    if(SOURCE!=="google")return;const m=GoogleMap.m,b=m.getBounds(),z=m.getZoom();if(!b)return;
+    if(z<AUTO_MIN_ZOOM){pill("放大地圖，附近門市就會自動出現",false,2600);return}
+    if(searched.some(r=>r.z>=z-.6&&r.b.contains(b.getNorthEast())&&r.b.contains(b.getSouthWest())))return;
+    if(GoogleMap.busy){_autoAgain=true;return}
+    searchArea(true);
+  },450);
+}
+async function loadPinned(){
+  for(const q of PINNED_STORES){try{await gSearch(q)}catch(e){console.error(e)}}
+}
+async function searchArea(silent){
+  if(SOURCE!=="google")return;const b=GoogleMap.m.getBounds();if(!b)return;
+  setBusy(true);let added=0;
+  try{const r=await gSearch("台灣大哥大 門市",b);added=r.added;
+    searched.push({b,z:GoogleMap.m.getZoom()});if(searched.length>60)searched.shift();
+    if(!silent&&!added)toast("此區域沒有找到新的門市");
+  }catch(e){console.error(e);toast("Google 搜尋失敗："+(e.message||e))}
+  setBusy(false);if(added)pill(`附近新增 ${added} 間門市`,false,1600);
+  if(_autoAgain){_autoAgain=false;autoSearch()}
+}
+async function citySearch(city){
+  setBusy(true,`載入${city}門市中…`);
+  try{await gSearch(`台灣大哥大 門市 ${city}`);await gSearch(`台灣大哥大 ${city} 直營門市`)}catch(e){console.error(e);toast("Google 搜尋失敗："+(e.message||e))}
+  setBusy(false);const l=filteredStores();if(l.length)MAP.fit(l);else toast(`在 Google 地圖上沒有找到${city}的門市`);
+}
+async function keywordSearch(q){
+  setBusy(true,`搜尋「${q}」附近門市…`);
+  try{const before=STORES.length;await gSearch(`台灣大哥大 ${q}`);const found=STORES.slice(before);if(found.length)MAP.fit(found);else toast(`沒有找到「${q}」相關的新門市`)}
+  catch(e){console.error(e);toast("Google 搜尋失敗："+(e.message||e))}
+  setBusy(false);
+}
+
+/* ================= 手機抽屜 ================= */
+const panel=$("#panel");
+const SNAPS=()=>[150,Math.round(innerHeight*.46),innerHeight-64-80];
+function setSheet(h){h=Math.max(120,Math.min(innerHeight-64-60,h));document.documentElement.style.setProperty("--sheet-h",h+"px");if(Spotlight.m)Spotlight.req()}
+function sheetH(){return panel.getBoundingClientRect().height}
+function ensureSheet(min){if(isMobile()&&sheetH()<min)setSheet(min)}
+(()=>{let y0,h0,moved;const g=$("#grab");
+  g.addEventListener("pointerdown",e=>{y0=e.clientY;h0=sheetH();moved=false;panel.classList.add("dragging");g.setPointerCapture(e.pointerId)});
+  g.addEventListener("pointermove",e=>{if(y0==null)return;const dy=y0-e.clientY;if(Math.abs(dy)>4)moved=true;setSheet(h0+dy)});
+  g.addEventListener("pointerup",()=>{panel.classList.remove("dragging");const h=sheetH(),s=SNAPS();
+    let t=moved?s.reduce((a,b)=>Math.abs(b-h)<Math.abs(a-h)?b:a):(s.find(v=>v>h+10)??s[0]);setSheet(t);y0=null});
+})();
+
+/* ================= 分頁 ================= */
+const TABS_ALL=[["stores","門市",ICON.store],["products","商品現貨",ICON.bag],["book","預約",ICON.cal],["more","更多",ICON.grid]];
+/* 開發者模式：網址加 ?dev=1（?dev=0 關閉），或連點左上角 logo 5 下切換；一般使用者看不到「更多」、資料來源設定與資料標籤 */
+const LS_DEV="twm_dev";
+(()=>{const q=new URLSearchParams(location.search).get("dev");if(q==="1")lsSet(LS_DEV,"1");if(q==="0")lsSet(LS_DEV,"")})();
+let DEV=lsGet(LS_DEV)==="1";
+let TABS=TABS_ALL.filter(t=>DEV||t[0]!=="more");
+function applyDev(){document.body.classList.toggle("dev",DEV);TABS=TABS_ALL.filter(t=>DEV||t[0]!=="more");if(!DEV&&state.tab==="more")setTab("stores");else renderTabs()}
+(()=>{let n=0,t;const g=document.getElementById("brandGem");if(!g)return;g.style.cursor="default";g.addEventListener("click",()=>{n++;clearTimeout(t);t=setTimeout(()=>n=0,1500);
+  if(n>=5){n=0;DEV=!DEV;lsSet(LS_DEV,DEV?"1":"");applyDev();toast(DEV?"已開啟開發者模式":"已關閉開發者模式")}})})();
+function renderTabs(){
+  const cnt=k=>k==="book"&&state.bookings.length?`<span class="cnt">${state.bookings.length}</span>`:"";
+  $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="${state.tab===k?"active":""}" data-tab="${k}">${l}${cnt(k)}</button>`).join("");
+  $("#bnav").innerHTML=TABS.map(([k,l,ic])=>`<button class="${state.tab===k?"active":""}" data-tab="${k}">${ic}<span>${l}</span>${cnt(k)}</button>`).join("");
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+}
+function setTab(t){state.tab=t;closeDetail();
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="v-"+t));
+  renderTabs();refreshMarkers();if(t==="book")renderBookings();ensureSheet(SNAPS()[1]);
+}
+
+/* ================= 標記 ================= */
+function refreshMarkers(){
+  if(!MAP)return;
+  const lay=activeLayer();
+  const prodMode=!lay&&state.tab==="products"&&state.prod;
+  $("#legend").classList.toggle("show",!!prodMode);
+  const visible=new Set(filteredStores().map(s=>s.id));
+  STORES.forEach(s=>{
+    let l="",label="";
+    let heat="";
+    if(lay){const v=lay.value(s);heat=l=lay.level(v);label=v>99?"99+":v}
+    else if(prodMode){const q=stockOf(s,state.prod.id,state.color,state.cap);l=lvl(q);label=q>9?"9+":q}
+    else if(s.flag)label="★";
+    const active=state.active===s.id;
+    const dim=!lay&&!(prodMode||state.tab!=="stores"||visible.has(s.id));
+    MAP.upsert(s,markerHTML(s,{lvl:l,label,active,dim,heat}),active);
+  });
+  Declutter.req();
+}
+function refreshAll(){renderCityOptions();renderStores();renderProducts();if(state.layer)renderLayerBar()}
+
+/* ================= 門市列表 ================= */
+function filteredStores(){
+  const q=state.q.trim().toLowerCase();
+  return STORES.filter(s=>(!state.city||s.city===state.city)&&(!state.openNow||isOpen(s))&&[...state.svc].every(v=>s.svc.includes(v))&&(!q||(s.name+s.addr+s.city).toLowerCase().includes(q)))
+    .map(s=>({...s,d:dist(state.me,s),qu:queueOf(s)})).sort((a,b)=>state.sort==="queue"?a.qu-b.qu:a.d-b.d);
+}
+function storeRow(s,extra=""){
+  const [oc,ot]=openLabel(s);
+  return `<div class="store ${state.active===s.id?"sel-on":""}" data-id="${s.id}">
+    <div class="thumb">${storeSVG(s)}</div>
+    <div style="flex:1;min-width:0">
+      <h4>${esc(s.name)}</h4>
+      <div class="meta num"><span>${fmtD(s.d??dist(state.me,s))}</span><i class="sep"></i><span class="${oc}">${ot}</span><i class="sep"></i><span>等候 ${s.qu??queueOf(s)} 組</span></div>
+      <div class="addr">${esc(s.addr)}</div>
+    </div>${extra}</div>`;
+}
+const emptyArt=()=>`<div class="ill">${scene("classic").svg}</div>`;
+function renderStores(){
+  const list=filteredStores();
+  $("#storeCount").textContent=SOURCE==="google"?`已從 Google 地圖載入 ${STORES.length} 間 · 符合 ${list.length} 間`:`共 ${list.length} 間門市（示意資料）`;
+  let empty=`<div class="empty">${emptyArt()}找不到符合條件的門市<br>試著清除篩選條件</div>`;
+  if(SOURCE==="google"&&!STORES.length)empty=`<div class="empty">${emptyArt()}移動或縮放地圖<br>附近門市會自動出現</div>`;
+  $("#storeList").innerHTML=(list.length?list.map(s=>storeRow(s)).join(""):empty)+styleGallery();
+  bindRows("#storeList");refreshMarkers();
+}
+function bindRows(sel){document.querySelectorAll(sel+" .store").forEach(r=>r.onclick=()=>openDetail(+r.dataset.id))}
+function renderCityOptions(){
+  const cities=SOURCE==="google"?CITIES:[...new Set(STORES.map(s=>s.city))];
+  const cnt=c=>STORES.filter(s=>s.city===c).length;
+  $("#city").innerHTML=`<option value="">全部縣市</option>`+cities.map(c=>`<option value="${c}" ${state.city===c?"selected":""}>${c}${SOURCE==="google"&&cnt(c)?`（${cnt(c)}）`:""}</option>`).join("");
+}
+
+/* ================= 商品 ================= */
+function renderProducts(){
+  $("#catChips").innerHTML=Object.entries(CATS).map(([k,v])=>`<button class="chip ${state.cat===k?"on":""}" data-cat="${k}">${v}</button>`).join("");
+  document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{state.cat=b.dataset.cat;renderProducts()});
+  const q=state.q.trim().toLowerCase(),list=PRODUCTS.filter(p=>q?p.name.toLowerCase().includes(q):p.cat===state.cat);
+  $("#prodTitle").textContent=q?`搜尋「${state.q}」`:CATS[state.cat];
+  $("#prodGrid").innerHTML=list.map(p=>{const n=STORES.filter(s=>stockOf(s,p.id,p.colors[0],p.caps[0])>0).length;
+    return `<button class="prod ${state.prod?.id===p.id?"on":""}" data-p="${p.id}"><div class="pimg">${p.ic}${p.isNew?'<span class="newtag">NEW</span>':""}</div><b>${p.name}</b><span class="price num">$${p.price.toLocaleString()} 起</span><span class="avail num">${n}/${STORES.length} 間門市有貨</span></button>`}).join("")||`<div class="empty" style="grid-column:1/-1">沒有符合的商品</div>`;
+  document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{const p=PRODUCTS.find(x=>x.id===b.dataset.p);state.prod=p;state.color=p.colors[0];state.cap=p.caps[0];if(state.layer)setLayer(null);renderProducts();$("#v-products").scrollTop=0});
+  renderSpec();
+}
+function renderSpec(){
+  const p=state.prod;
+  if(!p){$("#specBox").innerHTML="";$("#prodStores").innerHTML="";refreshMarkers();return}
+  const rows=STORES.map(s=>({...s,d:dist(state.me,s),q:stockOf(s,p.id,state.color,state.cap)})).sort((a,b)=>(b.q>0)-(a.q>0)||a.d-b.d);
+  const ok=rows.filter(r=>lvl(r.q)==="ok").length,low=rows.filter(r=>lvl(r.q)==="low").length,no=rows.filter(r=>r.q===0).length;
+  const chipset=(arr,key)=>arr.map(v=>`<button class="chip ${state[key]===v?"on":""}" data-${key}="${esc(v)}">${esc(v)}</button>`).join("");
+  $("#specBox").innerHTML=`<div class="spec">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><div style="flex:1"><h3>${p.ic} ${p.name}</h3><div class="num" style="margin-top:4px"><b>$${p.price.toLocaleString()}</b> <span style="font-size:12px;color:var(--ink-3)">搭配資費最低 $0 起（示意）</span></div></div>
+    <button class="iconbtn" id="clearProd" aria-label="關閉" style="background:var(--card)">${ICON.x}</button></div>
+    <div class="lbl">顏色</div><div class="chips">${chipset(p.colors,"color")}</div>
+    <div class="lbl">規格</div><div class="chips">${chipset(p.caps,"cap")}</div>
+    <div class="summary num"><div><b style="color:var(--ok)">${ok}</b><span>有現貨</span></div><div><b style="color:var(--warn)">${low}</b><span>少量</span></div><div><b style="color:var(--no)">${no}</b><span>無貨</span></div></div>
+  </div>`;
+  document.querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{state.color=b.dataset.color;renderSpec()});
+  document.querySelectorAll("[data-cap]").forEach(b=>b.onclick=()=>{state.cap=b.dataset.cap;renderSpec()});
+  $("#clearProd").onclick=()=>{state.prod=null;renderProducts()};
+  if(!rows.length){$("#prodStores").innerHTML=`<div class="empty">尚未載入門市<br>請先在地圖上搜尋區域</div>`;refreshMarkers();return}
+  const row=s=>{const l=lvl(s.q);return storeRow(s,`<span class="stock s-${l} num">${l==="no"?"無貨":l==="low"?`剩 ${s.q}`:`${s.q} 件`}</span>`)};
+  $("#prodStores").innerHTML=`<div class="section-t">有貨優先 · 依距離排序</div>`+rows.slice(0,6).map(row).join("")
+    +(rows.length>6?`<div class="pad"><button class="btn" style="width:100%" id="moreStores">查看全部 ${rows.length} 間門市</button></div>`:"");
+  bindRows("#prodStores");
+  if($("#moreStores"))$("#moreStores").onclick=()=>{$("#prodStores").innerHTML=`<div class="section-t">全部門市</div>`+rows.map(row).join("");bindRows("#prodStores")};
+  refreshMarkers();
+}
+
+/* ================= 門市詳情 ================= */
+function openDetail(id){
+  const s=STORES.find(x=>x.id===id);if(!s)return;state.active=id;
+  const d=dist(state.me,s),qu=queueOf(s),[oc,ot]=openLabel(s),p=state.prod;
+  const heroLvl=p?lvl(stockOf(s,p.id,state.color,state.cap)):"";
+  let inv;
+  if(p){inv=`<div class="section-t" style="margin:20px 0 4px">${p.name} 各規格現貨（示意）</div><table class="inv">`+
+      p.colors.flatMap(c=>p.caps.map(cp=>{const q=stockOf(s,p.id,c,cp),l=lvl(q);
+        return `<tr><td>${c} · ${cp}</td><td>${l==="no"?`<button class="btn sm" data-notify="${esc(p.name+" "+c+" "+cp)}">🔔 到貨通知</button>`:`<span class="stock s-${l} num">${lvlText[l]} ${q}</span>`}</td></tr>`})).join("")+`</table>`}
+  else{inv=`<div class="section-t" style="margin:20px 0 4px">熱門商品現貨（示意）</div><table class="inv">`+PRODUCTS.slice(0,6).map(pp=>{const l=lvl(stockOf(s,pp.id,pp.colors[0],pp.caps[0]));return `<tr><td>${pp.ic} ${pp.name}</td><td><span class="stock s-${l}">${lvlText[l]}</span></td></tr>`}).join("")+`</table>`}
+  const hr=new Date().getHours();
+  const busy=Array.from({length:24},(_,h)=>Math.min(100,Math.round(peopleOf(s,h)/36*100)));
+  const navUrl=s.gUrl||`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  const hoursHTML=s.src==="google"&&s.week?.length
+    ?`<span>今日 ${esc(s.hours)}<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--ink-3);font-size:13px">一週營業時間</summary><div style="font-size:13px;line-height:1.8;margin-top:4px">${s.week.map(esc).join("<br>")}</div></details></span>`
+    :`<span>${esc(s.hours)}${s.src==="google"?"":"（每日）"}</span>`;
+  $("#dBody").innerHTML=`
+    <div class="hero"><div class="d-top"><button class="iconbtn" id="dBack" aria-label="返回">${ICON.back}</button><button class="iconbtn" id="dFav" aria-label="收藏" style="${state.favs.has(id)?"color:var(--brand)":""}">${ICON.heart}</button></div>
+      <div class="hero-art ${s.flag?"k-flag-hero":""}">${storeSVG(s,heroLvl)}<div class="hero-style">${STYLE_NAME[styleOf(s)]}</div></div></div>
+    <div class="d-main">
+      ${s.flag?'<span class="pill-flag">旗艦店</span>':""}
+      <h2>${esc(s.name)}</h2>
+      <div class="meta num"><span class="${oc}">${ot}</span><i class="sep"></i><span>距離 ${fmtD(d)}</span></div>
+      <div class="queue num">
+        <div><span>目前等候</span><b>${qu}<small>組</small></b><div class="bar"><i style="width:${Math.min(100,qu*10)}%"></i></div></div>
+        <div><span>預估等待</span><b>${qu*6}<small>分鐘</small></b><div class="bar"><i style="width:${Math.min(100,qu*6)}%"></i></div></div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="${esc(navUrl)}" target="_blank" rel="noopener">${ICON.nav}導航</a>
+        <button class="btn dark" id="aTicket">${ICON.ticket}取號</button>
+        <button class="btn primary" id="aBook">${ICON.cal}預約到店</button>
+      </div>
+      <div class="kv">${ICON.pin}<span>${esc(s.addr)}</span>${ICON.clock}${hoursHTML}${ICON.phone}<span>${s.phone&&s.phone!=="未提供"?`<a href="tel:${esc(s.phone.replace(/\s/g,""))}">${esc(s.phone)}</a>`:esc(s.phone)}</span></div>
+      <div class="tagline">${s.svc.map(v=>`<span class="tag">${SVC[v]}</span>`).join("")}</div>
+      <div class="promo"><b>本店限定｜舊機折抵最高 $8,000</b><span>攜帶舊機到店估價，搭配 5G 資費再享配件 5 折（示意活動）</span></div>
+      ${inv}
+      <div class="section-t" style="margin:22px 0 4px">人潮時段預測</div>
+      <div class="hours">${busy.map((v,h)=>`<i class="${h===hr?"now":""}" style="height:${Math.max(3,v)}%"></i>`).join("")}</div>
+      <div class="hrs-l"><span>0時</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
+      <div class="srcnote">${s.src==="google"?"門市名稱、地址、電話、營業時間與位置來自 Google 地圖；":""}服務項目、等候人數、庫存與活動為示意資料。</div>
+    </div>`;
+  $("#detail").classList.add("show");$("#dBody").scrollTop=0;
+  $("#dBack").onclick=closeDetail;
+  $("#dFav").onclick=e=>{const b=e.currentTarget;if(state.favs.has(id)){state.favs.delete(id);toast("已取消常用門市")}else{state.favs.add(id);toast("已加入常用門市")}b.style.color=state.favs.has(id)?"var(--brand)":""};
+  $("#aBook").onclick=()=>openExtBooking(s);$("#aTicket").onclick=()=>takeTicket(s);
+  document.querySelectorAll("[data-notify]").forEach(b=>b.onclick=()=>{b.textContent="✓ 已設定";b.disabled=true;toast(`到貨後將推播通知：${b.dataset.notify}`)});
+  ensureSheet(SNAPS()[1]);MAP.flyTo(s.lat,s.lng,15);refreshMarkers();
+}
+function closeDetail(){$("#detail").classList.remove("show");if(state.active!==null){state.active=null;refreshMarkers()}}
+
+/* ================= 預約 / 取號 ================= */
+/* 預約串接外部 APP：新分頁開啟，並帶上門市資訊 */
+const BOOK_URL="https://claude.ai/artifact/6JQfSHjCgkwoJpQamPZcva";
+function bookUrl(s){if(!s)return BOOK_URL;const q=new URLSearchParams({store:s.name,addr:s.addr||"",lat:s.lat,lng:s.lng});if(s.placeId)q.set("placeId",s.placeId);return BOOK_URL+"?"+q}
+function openExtBooking(s){window.open(bookUrl(s),"_blank","noopener")}
+function openBooking(s){
+  const types=["購機／取貨","申辦／續約","維修收送","舊機回收估價","家用寬頻諮詢"];
+  const days=Array.from({length:5},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d});
+  const slots=["11:00","11:30","13:00","14:00","15:30","17:00","18:30","20:00"];
+  let bk={type:types[0],day:0,slot:null};
+  const draw=()=>{
+    $("#modal").innerHTML=`<h3>預約到店</h3><div style="color:var(--ink-3);font-size:13px">${esc(s.name)}</div>
+      <div class="lbl">服務項目</div><div class="chips" style="flex-wrap:wrap">${types.map(t=>`<button class="chip ${bk.type===t?"on":""}" data-bt="${t}">${t}</button>`).join("")}</div>
+      <div class="lbl">日期</div><div class="chips">${days.map((d,i)=>`<button class="chip ${bk.day===i?"on":""}" data-bd="${i}">${i===0?"今天 ":i===1?"明天 ":""}${d.getMonth()+1}/${d.getDate()}（${"日一二三四五六"[d.getDay()]}）</button>`).join("")}</div>
+      <div class="lbl">時段</div><div class="slots num">${slots.map(t=>`<button class="slot ${bk.slot===t?"on":""}" data-bs="${t}" ${hash(s.key+bk.day+t)%4===0?"disabled":""}>${t}</button>`).join("")}</div>
+      ${state.prod?`<div class="note">📦 將為您保留：<b>${state.prod.name} ${state.color} ${state.cap}</b></div>`:""}
+      <div class="row" style="margin-top:18px;flex-wrap:nowrap"><button class="btn" id="bkCancel" style="flex:1">取消</button><button class="btn primary" id="bkOk" style="flex:2" ${bk.slot?"":"disabled"}>確認預約</button></div>`;
+    document.querySelectorAll("[data-bt]").forEach(b=>b.onclick=()=>{bk.type=b.dataset.bt;draw()});
+    document.querySelectorAll("[data-bd]").forEach(b=>b.onclick=()=>{bk.day=+b.dataset.bd;bk.slot=null;draw()});
+    document.querySelectorAll("[data-bs]").forEach(b=>b.onclick=()=>{bk.slot=b.dataset.bs;draw()});
+    $("#bkCancel").onclick=()=>$("#mask").classList.remove("show");
+    $("#bkOk").onclick=()=>{if(!bk.slot)return;const d=days[bk.day];
+      state.bookings.unshift({kind:"預約",store:s.name,type:bk.type,when:`${d.getMonth()+1}/${d.getDate()} ${bk.slot}`,item:state.prod?`${state.prod.name} ${state.color} ${state.cap}`:"",code:"R"+(hash(s.key+bk.slot+Date.now())%9000+1000)});
+      $("#mask").classList.remove("show");renderTabs();toast("預約成功！可在「預約」分頁查看")};
+  };
+  draw();$("#mask").classList.add("show");
+}
+function takeTicket(s){
+  if(!isOpen(s)){toast("門市目前非營業時間，請改用預約到店");return}
+  const qu=queueOf(s);
+  state.bookings.unshift({kind:"取號",store:s.name,when:`預估 ${qu*6} 分鐘後叫號`,num:"A"+String(100+hash(s.key+Date.now())%300).padStart(3,"0"),ahead:qu});
+  renderTabs();toast(`取號成功，前面還有 ${qu} 組`);
+}
+function renderBookings(){
+  $("#bookOpen").href=bookUrl(state.active!=null?STORES.find(x=>x.id===state.active):null);if(!$("#bookGem").firstChild)$("#bookGem").innerHTML=gem(0,0,1);
+  $("#bookList").innerHTML=state.bookings.length?state.bookings.map((b,i)=>`
+    <div class="bk"><div class="row" style="justify-content:space-between"><span class="tag" style="background:var(--card)">${b.kind}</span><button class="btn sm" style="background:var(--card)" data-cancel="${i}">取消</button></div>
+    ${b.num?`<div class="big num">${b.num}</div><div style="font-size:13px;color:var(--ink-2)">前面還有 ${b.ahead} 組 · ${b.when}</div><div style="font-size:12px;color:var(--ink-3);margin-top:4px">輪到前 3 組時會推播提醒您回店</div>`
+    :`<div style="font-weight:800;font-size:18px;margin-top:10px" class="num">${b.when}</div><div style="font-size:13px;color:var(--ink-2)">${b.type}${b.item?" · "+b.item:""}</div><div style="font-size:12px;color:var(--ink-3);margin-top:4px">預約代碼 ${b.code}（到店出示 QR Code 報到）</div>`}
+    <div style="font-size:13px;margin-top:10px;font-weight:600">📍 ${esc(b.store)}</div></div>`).join("")
+    :`<div class="empty">${emptyArt()}還沒有取號紀錄<br><span style="font-size:13px">在門市頁點「取號」即可線上排隊</span></div>`;
+  document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{state.bookings.splice(+b.dataset.cancel,1);renderBookings();renderTabs();toast("已取消")});
+}
+
+/* ================= 功能藍圖 ================= */
+const FEATS=[
+ ["🔘","快捷圖層＋自訂熱鍵","右側小圓一鍵切換此刻預約人潮、iPhone 庫存熱度圖，也能把常看的商品規格、門市、地點存成熱鍵（數字鍵 1–9）。",1],
+ ["🗺️","門市地圖＋篩選","依縣市、營業中、服務項目篩選，距離或等候時間排序。",1],
+ ["🏙️","3D 等角門市圖樣","向量地圖 3D 傾斜與旋轉，門市以等角立體模型呈現，旗艦店另有造型。",1],
+ ["📍","Google 地圖門市位置","以 Google 地圖上的台灣大哥大門市為準，顯示實際地址、電話、營業時間。",1],
+ ["📦","商品選單 × 即時現貨","依顏色／容量查各門市庫存，3D 模型底座顏色直接顯示有貨／少量／無貨。",1],
+ ["🎫","線上取號＋叫號推播","遠端抽號碼牌，輪到前 3 組推播提醒，減少門市排隊人潮。",1],
+ ["📅","預約到店＋保留商品","選服務與時段，可同時保留指定規格商品，到店出示 QR Code 報到。",1],
+ ["🔔","到貨通知","無貨規格一鍵訂閱，任一鄰近門市到貨即推播。",1],
+ ["🛒","線上下單、門市取貨","結合官網購物車，選擇門市取貨並顯示可取貨時間。",2],
+ ["💳","資費方案試算／比較","選手機後直接比較不同資費的購機價與月付，並可帶入預約。",2],
+ ["♻️","舊機回收估價","輸入機型與外觀狀況先拿估價，到店直接折抵。",2],
+ ["🔧","維修進度查詢","輸入維修單號查進度，完修推播通知回原門市取件。",2],
+ ["🎁","門市限定活動／優惠券","依門市推送限定優惠、新機體驗會、開箱活動報名。",2],
+ ["👤","會員整合","綁定門號查看合約到期日，到期前推薦續約優惠與鄰近門市。",2],
+ ["🌐","多語系介面","英文、日文、越南文、印尼文。",2],
+ ["🔁","門市調貨申請（內部版）","門市人員查跨店庫存，替客人申請調貨並追蹤到店時間。",3],
+ ["📈","營運儀表板（內部版）","各區熱門搜尋商品、缺貨熱點、取號量，協助補貨與排班。",3],
+ ["💬","AI 客服小幫手","「信義區哪裡有紫色 S26 Ultra？」直接回覆門市與庫存。",3],
+];
+function renderFeats(){$("#featList").innerHTML=FEATS.map(([ic,t,d,p])=>`<div class="feat"><div class="ic">${ic}</div><div><b>${t}<span class="ph p${p}">${p===1?"已示範":p===2?"第二階段":"進階"}</span></b><p>${d}</p></div></div>`).join("")}
+
+/* ================= 地圖來源設定 ================= */
+function openSource(){
+  $("#modal").innerHTML=`<h3>地圖資料來源</h3>
+    <div style="font-size:13px;color:var(--ink-3)">目前：<b style="color:var(--ink)">${SOURCE==="google"?"Google 地圖（實際門市位置）":"示意資料（20 間虛構門市）"}</b></div>
+    <div class="lbl">Google Maps API 金鑰</div>
+    <input class="field" id="keyInput" placeholder="AIza…" value="${esc(lsGet(LS_KEY))}" autocomplete="off" spellcheck="false">
+    <div class="lbl">Map ID（選填，需為「向量」地圖才能 3D 傾斜）</div>
+    <input class="field" id="mapIdInput" placeholder="DEMO_MAP_ID" value="${esc(lsGet(LS_MAPID))}" autocomplete="off" spellcheck="false">
+    <div class="note">需在 Google Cloud 啟用 <b>Maps JavaScript API</b> 與 <b>Places API (New)</b>。若 3D 傾斜沒有作用，到「地圖管理」建立地圖類型為 JavaScript、向量的 Map ID 填在上方。地圖配色請在「地圖樣式」匯入 twm-map-style.json，並連結到這個 Map ID。金鑰只存在這台瀏覽器。</div>
+    <div class="row" style="margin-top:18px;flex-wrap:nowrap">
+      ${SOURCE==="google"||lsGet(LS_KEY)?`<button class="btn" id="keyClear" style="flex:1">改回示意資料</button>`:`<button class="btn" id="keyCancel" style="flex:1">取消</button>`}
+      <button class="btn primary" id="keySave" style="flex:2">使用 Google 地圖</button></div>`;
+  $("#mask").classList.add("show");
+  $("#keySave").onclick=()=>{const v=$("#keyInput").value.trim();if(!v){toast("請先貼上 API 金鑰");return}lsSet(LS_KEY,v);lsSet(LS_MAPID,$("#mapIdInput").value.trim());location.reload()};
+  if($("#keyClear"))$("#keyClear").onclick=()=>{lsSet(LS_KEY,"");if(GOOGLE_MAPS_API_KEY)toast("金鑰寫在程式碼中，請移除 GOOGLE_MAPS_API_KEY");else location.reload()};
+  if($("#keyCancel"))$("#keyCancel").onclick=()=>$("#mask").classList.remove("show");
+}
+
+/* ================= 事件 ================= */
+$("#city").onchange=e=>{state.city=e.target.value;if(SOURCE==="google"&&state.city){renderStores();citySearch(state.city);return}renderStores();const l=filteredStores();if(l.length)MAP.fit(l)};
+$("#openNow").onclick=e=>{state.openNow=!state.openNow;e.currentTarget.classList.toggle("on",state.openNow);renderStores()};
+$("#sort").onchange=e=>{state.sort=e.target.value;renderStores()};
+$("#svcChips").innerHTML=Object.entries(SVC).map(([k,v])=>`<button class="chip" data-svc="${k}">${v}</button>`).join("");
+document.querySelectorAll("[data-svc]").forEach(b=>b.onclick=()=>{const k=b.dataset.svc;state.svc.has(k)?state.svc.delete(k):state.svc.add(k);b.classList.toggle("on");renderStores()});
+const isProductQuery=q=>q&&PRODUCTS.some(p=>p.name.toLowerCase().includes(q.toLowerCase()));
+let qt;$("#q").oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{state.q=e.target.value;
+  if(isProductQuery(state.q)&&state.tab!=="products")setTab("products");else if(!isProductQuery(state.q)&&state.q&&state.tab!=="stores")setTab("stores");
+  renderStores();renderProducts()},200)};
+$("#q").onkeydown=e=>{if(e.key!=="Enter"||SOURCE!=="google")return;const q=e.target.value.trim();if(!q||isProductQuery(q))return;state.q="";e.target.value="";setTab("stores");keywordSearch(q)};
+$("#locBtn").onclick=()=>{
+  const btn=$("#locBtn");
+  if(!navigator.geolocation){toast("此瀏覽器不支援定位");return}
+  if(btn.classList.contains("busy"))return;
+  btn.classList.add("busy");toast("定位中…");
+  const done=()=>btn.classList.remove("busy");
+  navigator.geolocation.getCurrentPosition(p=>{done();
+      state.me={lat:p.coords.latitude,lng:p.coords.longitude};MAP.setMe(state.me.lat,state.me.lng);MAP.flyTo(state.me.lat,state.me.lng,15);
+      renderStores();renderSpec();toast("已移到您目前的位置");if(SOURCE==="google")setTimeout(()=>searchArea(),900)},
+    err=>{done();
+      const fileProto=location.protocol==="file:";
+      const msg=err.code===1
+        ? (fileProto?"瀏覽器擋下了本機檔案的定位：請把網頁放到 https 網址，或用 localhost 開啟":"定位權限被拒絕：請在網址列左側的設定中允許「位置」")
+        : err.code===3 ? "定位逾時，請確認電腦或手機已開啟定位服務"
+        : "無法取得位置：Mac 請到「系統設定 → 隱私權與安全性 → 定位服務」允許 Chrome";
+      toast(msg);MAP.flyTo(state.me.lat,state.me.lng,15)},
+    {enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+};
+$("#srcBtn").onclick=openSource;$("#srcBtn2").onclick=openSource;
+
+$("#tiltBtn").onclick=()=>MAP.toggle3D&&MAP.toggle3D();
+$("#rotL").onclick=()=>MAP.rotate&&MAP.rotate(-45);
+$("#rotR").onclick=()=>MAP.rotate&&MAP.rotate(45);
+$("#zIn").onclick=()=>MAP.zoom(1);$("#zOut").onclick=()=>MAP.zoom(-1);
+$("#mask").onclick=e=>{if(e.target.id==="mask")$("#mask").classList.remove("show")};
+window.addEventListener("resize",()=>MAP&&MAP.resize());
+
+/* ================= 快捷圖層與自訂熱鍵 ================= */
+const HK_KEY="twm_hotkeys";
+const HEAT_COLORS={g:"#14A35A",y:"#E0A800",o:"#F07A1A",r:"#E5484D"};
+const IPHONES=()=>PRODUCTS.filter(p=>/^iPhone (18|Duo)/.test(p.name));
+const GLYPH={
+  people:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.3A4.5 4.5 0 0 1 21 18.6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+};
+const GRAD={
+  queue:"conic-gradient(from 200deg,#14A35A,#E0A800,#F07A1A,#E5484D,#14A35A)",
+  stock:"conic-gradient(from 20deg,#E5484D,#F07A1A,#E0A800,#14A35A,#E5484D)",
+  view:"linear-gradient(135deg,#5B6B7C,#2E3A48)",
+  store:"linear-gradient(160deg,var(--brand-50),var(--card-2))",
+};
+function loadHK(){try{return JSON.parse(localStorage.getItem(HK_KEY)||"[]")}catch(e){return []}}
+function saveHK(){try{localStorage.setItem(HK_KEY,JSON.stringify(HOTKEYS))}catch(e){}}
+let HOTKEYS=loadHK();
+state.layer=null;
+state.ls={pid:"ip18p",cap:"256GB"};
+const scaleQ=v=>v<=3?"g":v<=10?"y":v<20?"o":"r";
+const scaleAgg=v=>v>=20?"g":v>=10?"y":v>=6?"o":"r";
+const scaleOne=v=>v>=8?"g":v>=4?"y":v>=1?"o":"r";
+function stockSum(s,pid,cap,color){const p=PRODUCTS.find(x=>x.id===pid);if(!p)return 0;
+  return (color?[color]:p.colors).reduce((t,c)=>t+stockOf(s,pid,c,cap),0)}
+
+/* 內建圖層＋自訂熱鍵，全部轉成統一的「圖層物件」 */
+function builtinLayers(){return [
+  {id:"queue",kind:"queue",name:"預約人潮",grad:GRAD.queue,glyph:GLYPH.people},
+  {id:"iphone",kind:"iphone",name:"iPhone 庫存",grad:GRAD.stock,glyph:GLYPH.phone},
+]}
+function allLayers(){return [...builtinLayers(),...HOTKEYS]}
+function layerById(id){return allLayers().find(l=>l.id===id)}
+function activeLayer(){
+  const L=state.layer&&layerById(state.layer);if(!L)return null;
+  if(L.kind==="queue")return {...L,value:s=>peopleOf(s),level:scaleQ,
+    scale:[["g","≤3 人"],["y","4–10 人"],["o","11–19 人"],["r","20+ 人"]]};
+  if(L.kind==="iphone")return {...L,value:s=>stockSum(s,state.ls.pid,state.ls.cap),level:scaleAgg,
+    scale:[["g","20+ 台"],["y","10–19 台"],["o","6–9 台"],["r","0–5 台"]]};
+  if(L.kind==="stock"){const agg=!L.color;return {...L,value:s=>stockSum(s,L.pid,L.cap,L.color),level:agg?scaleAgg:scaleOne,
+    scale:agg?[["g","20+ 台"],["y","10–19 台"],["o","6–9 台"],["r","0–5 台"]]:[["g","8+ 台"],["y","4–7 台"],["o","1–3 台"],["r","無貨"]]}}
+  return null;
+}
+function dotHTML(L){
+  if(L.kind==="store")return `<div class="lyr-dot" style="background:${GRAD.store}"><span class="thumb-svg">${scene("storeC").svg}</span></div>`;
+  if(L.kind==="view")return `<div class="lyr-dot" style="background:${GRAD.view}">${GLYPH.pin}</div>`;
+  if(L.kind==="stock")return `<div class="lyr-dot" style="background:${GRAD.stock}">${GLYPH.phone}</div>`;
+  return `<div class="lyr-dot" style="background:${L.grad}">${L.glyph}</div>`;
+}
+function renderLayers(){
+  const ls=allLayers();
+  $("#layers").innerHTML=ls.map((L,i)=>`<button class="lyr ${state.layer===L.id?"on":""}" data-lyr="${L.id}" title="${esc(L.name)}（快捷鍵 ${i<9?i+1:""}）">
+      ${dotHTML(L)}<span class="lyr-lbl">${esc(L.name)}${i<9?`<span class="lyr-key">${i+1}</span>`:""}</span></button>`).join("")
+    +`<button class="lyr add" id="hkAdd" title="新增自訂熱鍵">${`<div class="lyr-dot">${GLYPH.plus}</div>`}<span class="lyr-lbl">自訂熱鍵</span></button>`
+    +`<button class="lyr-toggle" id="lyrToggle">${$("#layers").classList.contains("collapsed")?"顯示名稱":"只顯示圖示"}</button>`;
+  document.querySelectorAll("[data-lyr]").forEach(b=>b.onclick=()=>triggerHK(b.dataset.lyr));
+  $("#hkAdd").onclick=openHKModal;
+  $("#lyrToggle").onclick=()=>{$("#layers").classList.toggle("collapsed");renderLayers()};
+}
+function triggerHK(id){
+  const L=layerById(id);if(!L)return;
+  if(L.kind==="store"){gotoStoreHK(L);return}
+  if(L.kind==="view"){MAP.setView(L);toast(`已移到「${L.name}」`);return}
+  setLayer(state.layer===id?null:id);
+}
+function setLayer(id){
+  state.layer=id;
+  if(id&&state.tab==="products"&&state.prod){state.prod=null;renderProducts()}
+  renderLayers();renderLayerBar();refreshMarkers();
+  if(id){const L=activeLayer();if(L&&!STORES.length)toast("尚未載入門市，請先搜尋區域")}
+}
+function renderLayerBar(){
+  const L=activeLayer(),bar=$("#layerbar");
+  if(!L){bar.classList.remove("show");return}
+  const counts={g:0,y:0,o:0,r:0};STORES.forEach(s=>counts[L.level(L.value(s))]++);
+  let sub="",ctl="";
+  if(L.kind==="queue"){
+    const t=new Date();
+    sub=`此刻預約＋現場等候人數（示意）· ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")} 更新 · ${STORES.length} 間門市`;
+  }else if(L.kind==="iphone"){
+    const p=PRODUCTS.find(x=>x.id===state.ls.pid);
+    sub=`${p.name} · ${state.ls.cap} · 全部顏色合計（示意）`;
+    ctl=`<div class="chips">${IPHONES().map(x=>`<button class="chip ${x.id===state.ls.pid?"on":""}" data-lsp="${x.id}">${x.name.replace("iPhone ","")}</button>`).join("")}</div>
+         <div class="chips">${p.caps.map(c=>`<button class="chip ${c===state.ls.cap?"on":""}" data-lsc="${c}">${c}</button>`).join("")}</div>`;
+  }else if(L.kind==="stock"){
+    const p=PRODUCTS.find(x=>x.id===L.pid);sub=`${p?p.name:""} · ${L.cap} · ${L.color||"全部顏色合計"}（示意）`;
+  }
+  $("#lbCard").innerHTML=`<div class="lb-head">${dotHTML(L)}<div style="flex:1;min-width:0"><b>${esc(L.name)}</b><small>${esc(sub)}</small></div>
+      <button class="iconbtn" id="lbClose" aria-label="關閉圖層">${ICON.x}</button></div>
+    <div class="lb-scale">${L.scale.map(([k,t])=>`<div><i style="background:${HEAT_COLORS[k]}"></i><span>${t}</span><b>${counts[k]}</b></div>`).join("")}</div>
+    ${ctl?`<div class="lb-ctl">${ctl}</div>`:""}`;
+  bar.classList.add("show");
+  $("#lbClose").onclick=()=>setLayer(null);
+  document.querySelectorAll("[data-lsp]").forEach(b=>b.onclick=()=>{state.ls.pid=b.dataset.lsp;const p=PRODUCTS.find(x=>x.id===state.ls.pid);if(!p.caps.includes(state.ls.cap))state.ls.cap=p.caps[0];renderLayerBar();refreshMarkers()});
+  document.querySelectorAll("[data-lsc]").forEach(b=>b.onclick=()=>{state.ls.cap=b.dataset.lsc;renderLayerBar();refreshMarkers()});
+}
+async function gotoStoreHK(L){
+  let s=STORES.find(x=>x.key===L.key);
+  if(!s&&SOURCE==="google"){MAP.setView({lat:L.lat,lng:L.lng,zoom:16});
+    await new Promise(r=>setTimeout(r,1600));s=STORES.find(x=>x.key===L.key)}
+  if(s){if(state.tab!=="stores")setTab("stores");openDetail(s.id)}
+  else{MAP.flyTo(L.lat,L.lng,16);toast(`已移到「${L.name}」附近`)}
+}
+
+/* ---------- 自訂熱鍵編輯視窗 ---------- */
+function openHKModal(){
+  let type=state.prod?"stock":state.active!=null?"store":"stock";
+  const d={pid:state.prod?.id||"ip18p",cap:state.cap||"256GB",color:state.prod?state.color:"",store:state.active!=null?STORES.find(s=>s.id===state.active)?.key:(STORES[0]?.key||""),name:""};
+  const draw=()=>{
+    const p=PRODUCTS.find(x=>x.id===d.pid);if(!p.caps.includes(d.cap))d.cap=p.caps[0];if(d.color&&!p.colors.includes(d.color))d.color="";
+    const storeOpts=[...STORES].sort((a,b)=>dist(state.me,a)-dist(state.me,b));
+    let body="";
+    if(type==="stock")body=`
+      <div class="lbl">商品</div><select class="sel full" id="hkP">${Object.entries(CATS).map(([k,c])=>`<optgroup label="${c}">${PRODUCTS.filter(x=>x.cat===k).map(x=>`<option value="${x.id}" ${x.id===d.pid?"selected":""}>${x.name}</option>`).join("")}</optgroup>`).join("")}</select>
+      <div class="lbl">規格</div><div class="chips" style="flex-wrap:wrap">${p.caps.map(c=>`<button class="chip ${c===d.cap?"on":""}" data-hkc="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <div class="lbl">顏色</div><div class="chips" style="flex-wrap:wrap"><button class="chip ${!d.color?"on":""}" data-hkcol="">全部顏色合計</button>${p.colors.map(c=>`<button class="chip ${c===d.color?"on":""}" data-hkcol="${esc(c)}">${esc(c)}</button>`).join("")}</div>`;
+    else if(type==="store")body=storeOpts.length?`
+      <div class="lbl">門市（依距離排序）</div><select class="sel full" id="hkS">${storeOpts.map(s=>`<option value="${esc(s.key)}" ${s.key===d.store?"selected":""}>${esc(s.name)}</option>`).join("")}</select>
+      <div class="note">按下這個熱鍵會直接跳到該門市並打開門市資訊。</div>`:`<div class="note">目前沒有載入任何門市，請先在地圖上搜尋區域。</div>`;
+    else body=`<div class="note">會記住<b>目前地圖的位置與縮放</b>，之後一鍵跳回來，例如「信義商圈」、「台中七期」。</div>`;
+    const auto=type==="stock"?`${p.name.replace("iPhone ","iPhone ")} ${d.cap}${d.color?" "+d.color:""}`:type==="store"?(STORES.find(s=>s.key===d.store)?.name||"門市"):"我的地點";
+    $("#modal").innerHTML=`<h3>自訂熱鍵</h3><div style="font-size:13px;color:var(--ink-3)">建立後會出現在地圖右側，也可以用鍵盤數字鍵 1–9 切換</div>
+      <div class="typeseg">${[["stock","商品庫存"],["store","門市"],["view","地圖位置"]].map(([k,t])=>`<button class="${type===k?"on":""}" data-hkt="${k}">${t}</button>`).join("")}</div>
+      ${body}
+      <div class="lbl">名稱</div><input class="field" id="hkName" placeholder="${esc(auto)}" value="${esc(d.name)}" maxlength="24">
+      <div class="row" style="margin-top:16px;flex-wrap:nowrap"><button class="btn" id="hkCancel" style="flex:1">關閉</button><button class="btn primary" id="hkSave" style="flex:2" ${type==="store"&&!storeOpts.length?"disabled":""}>新增熱鍵</button></div>
+      ${HOTKEYS.length?`<div class="lbl" style="margin-top:22px">已建立的熱鍵</div><div class="hk-list">${allLayers().map((L,i)=>`<div class="hk-row">${dotHTML(L)}<b>${i+1}．${esc(L.name)}</b>${i<2?`<span style="font-size:11.5px;color:var(--ink-3)">內建</span>`:`<button class="iconbtn" data-hkup="${L.id}" title="上移" ${i===2?"disabled style='opacity:.3'":""}>${I('<path d="m18 15-6-6-6 6"/>',16)}</button><button class="iconbtn" data-hkdel="${L.id}" title="刪除">${ICON.x}</button>`}</div>`).join("")}</div>`:""}`;
+    document.querySelectorAll("[data-hkt]").forEach(b=>b.onclick=()=>{type=b.dataset.hkt;d.name=$("#hkName").value;draw()});
+    if($("#hkP"))$("#hkP").onchange=e=>{d.pid=e.target.value;d.name=$("#hkName").value;draw()};
+    if($("#hkS"))$("#hkS").onchange=e=>{d.store=e.target.value;d.name=$("#hkName").value;draw()};
+    document.querySelectorAll("[data-hkc]").forEach(b=>b.onclick=()=>{d.cap=b.dataset.hkc;d.name=$("#hkName").value;draw()});
+    document.querySelectorAll("[data-hkcol]").forEach(b=>b.onclick=()=>{d.color=b.dataset.hkcol;d.name=$("#hkName").value;draw()});
+    document.querySelectorAll("[data-hkdel]").forEach(b=>b.onclick=()=>{HOTKEYS=HOTKEYS.filter(x=>x.id!==b.dataset.hkdel);if(state.layer===b.dataset.hkdel)setLayer(null);saveHK();renderLayers();d.name=$("#hkName").value;draw()});
+    document.querySelectorAll("[data-hkup]").forEach(b=>b.onclick=()=>{const i=HOTKEYS.findIndex(x=>x.id===b.dataset.hkup);if(i>0){[HOTKEYS[i-1],HOTKEYS[i]]=[HOTKEYS[i],HOTKEYS[i-1]];saveHK();renderLayers();d.name=$("#hkName").value;draw()}});
+    $("#hkCancel").onclick=()=>$("#mask").classList.remove("show");
+    $("#hkSave").onclick=()=>{
+      const name=($("#hkName").value.trim()||auto).slice(0,24),id="hk"+Date.now().toString(36);
+      let hk;
+      if(type==="stock")hk={id,kind:"stock",name,pid:d.pid,cap:d.cap,color:d.color||""};
+      else if(type==="store"){const s=STORES.find(x=>x.key===d.store);if(!s)return;hk={id,kind:"store",name,key:s.key,lat:s.lat,lng:s.lng}}
+      else{const v=MAP.getView?MAP.getView():{lat:state.me.lat,lng:state.me.lng,zoom:14};hk={id,kind:"view",name,lat:v.lat,lng:v.lng,zoom:v.zoom}}
+      HOTKEYS.push(hk);saveHK();renderLayers();$("#mask").classList.remove("show");
+      const n=allLayers().length;toast(`已新增熱鍵「${name}」${n<=9?`，按數字鍵 ${n} 也能切換`:""}`);
+    };
+  };
+  draw();$("#mask").classList.add("show");
+}
+setInterval(()=>{if(state.layer){renderLayerBar();refreshMarkers()}},60000);
+document.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const t=e.target;if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT"||t.isContentEditable))return;
+  if($("#mask").classList.contains("show")){if(e.key==="Escape")$("#mask").classList.remove("show");return}
+  if(/^[1-9]$/.test(e.key)){const L=allLayers()[+e.key-1];if(L){e.preventDefault();triggerHK(L.id)}}
+  else if(e.key==="Escape"&&state.layer)setLayer(null);
+});
+
+/* ================= 啟動 ================= */
+function ready(){
+  const b=$("#srcBadge");
+  if(SOURCE==="google"){b.textContent="Google 地圖 · 庫存示意";b.classList.add("g")}else{b.textContent="示意資料";b.classList.remove("g")}
+  applyDev();
+  renderTabs();refreshAll();renderFeats();renderLayers();setTimeout(()=>MAP.resize(),200);
+}
+function useDemo(msg){
+  if(SOURCE==="demo")return;
+  if(SOURCE==="google"){const n=document.createElement("div");n.id="map";$("#map").replaceWith(n);$("#areaBtn").classList.remove("show");document.body.classList.remove("engine-g")}
+  SOURCE="demo";MAP=LeafletMap;
+  STORES=DEMO_STORES.map((s,i)=>({id:i,key:String(i),src:"demo",name:s[0],city:s[1],addr:s[2],lat:s[3],lng:s[4],hours:s[5],svc:s[6],flag:!!s[7],phone:`02-○○○○-${String(1000+i*37).slice(-4)}`}));
+  try{LeafletMap.init()}catch(e){console.error(e);MAP={upsert(){},setMe(){},flyTo(){},fit(){},zoom(){},resize(){}};document.body.classList.add("demo");$("#map").innerHTML='<div class="empty" style="padding-top:30vh">地圖載入失敗，請檢查網路連線</div>'}
+  ready();if(msg)setTimeout(()=>toast(msg),400);
+}
+function boot(){
+  if(!API_KEY){useDemo();return}
+  window.gm_authFailure=()=>useDemo("Google 金鑰無效或未啟用所需 API，已改用示意資料");
+  window.__gInit=async()=>{try{SOURCE="google";MAP=GoogleMap;STORES=[];await GoogleMap.init();ready()}catch(e){console.error(e);useDemo("Google 地圖載入失敗，已改用示意資料")}};
+  const sc=document.createElement("script");
+  sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(API_KEY)}&v=weekly&language=zh-TW&region=TW&loading=async&callback=__gInit`;
+  const inFrame=(()=>{try{return window.top!==window.self}catch(e){return true}})();
+  sc.async=true;sc.onerror=()=>useDemo(inFrame?"這個預覽視窗擋住了 Google 地圖，請下載檔案後用 Chrome 開啟":"無法連線到 Google 地圖（請檢查網路或擋廣告外掛），已改用示意資料");
+  document.head.appendChild(sc);
+}
+boot();
+</script>
+</body>
+</html>
