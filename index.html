@@ -348,6 +348,27 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
 .chip .bc{margin-left:5px;font-size:11px;color:var(--ink-3);font-weight:600}
 .chip.on .bc{color:inherit;opacity:.7}
 .pbrand{font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.03em}
+
+/* 搜尋建議 */
+.search{position:relative}
+.q-x{width:26px;height:26px;border-radius:50%;display:none;place-items:center;color:var(--ink-3);background:var(--card-2);flex:none}
+.search:focus-within .q-x,#q:not(:placeholder-shown)~.q-x{display:grid}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 8px);background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:6px;display:none;max-height:min(440px,60vh);overflow:auto;z-index:720}
+.sugg.show{display:block;animation:pop .15s ease}
+.sg-h{font-size:11.5px;font-weight:700;color:var(--ink-3);padding:8px 12px 4px;letter-spacing:.06em}
+.sg{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:9px 12px;border-radius:12px}
+.sg:hover,.sg.on{background:var(--brand-50)}
+.sg-i{width:32px;height:32px;border-radius:10px;background:var(--card-2);display:grid;place-items:center;font-size:16px;flex:none}
+.sg-t{min-width:0;display:flex;flex-direction:column}
+.sg-t b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-t small{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-load{padding:12px;font-size:13px;color:var(--ink-3)}
+/* 搜尋地點的圖釘 */
+.spin{position:relative;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;animation:pinDrop .45s cubic-bezier(.3,1.5,.5,1);pointer-events:none}
+.engine-g .spin{transform:none}
+.spin svg{filter:drop-shadow(0 4px 6px rgba(0,0,0,.25))}
+.spin-l{background:var(--ink);color:#fff;font:700 12px var(--font);padding:5px 10px;border-radius:10px;margin-bottom:4px;white-space:nowrap;box-shadow:var(--shadow-sm)}
+@keyframes pinDrop{from{opacity:0;translate:0 -24px}}
 /* 底部導覽（手機） */
 .bnav{display:none}
 
@@ -477,7 +498,9 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   </div>
   <label class="search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input id="q" placeholder="搜尋門市、地區或商品" autocomplete="off">
+    <input id="q" placeholder="搜尋地點、路名、門市或商品" autocomplete="off" role="combobox" aria-controls="sugg">
+    <button class="q-x" id="qClear" type="button" aria-label="清除"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="sugg" id="sugg" role="listbox"></div>
   </label>
   <div class="top-actions">
     <button class="circle" id="locBtn" title="定位我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 11 18-8-8 18-2-8-8-2z"/></svg></button>
@@ -1003,10 +1026,11 @@ function styleGallery(){
 }
 
 (()=>{const g=document.getElementById("brandGem");if(g)g.innerHTML=`<svg viewBox="-1.05 -1.05 2.1 2.1">${gem(0,0,1)}</svg>`})();
+function pinHTML(name){return `<div class="spin"><div class="spin-l">${esc(name)}</div><svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 39C15 39 2 24 2 14.5a13 13 0 0 1 26 0C28 24 15 39 15 39z" fill="#FF6A00" stroke="#fff" stroke-width="2.5"/><circle cx="15" cy="14.5" r="5" fill="#fff"/></svg></div>`}
 function htmlEl(h){const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstElementChild}
 
 /* ================= 狀態與工具 ================= */
-const state={brand:"",tab:"stores",city:"",openNow:false,svc:new Set(),sort:"dist",q:"",me:{lat:25.0330,lng:121.5654},
+const state={ref:null,brand:"",tab:"stores",city:"",openNow:false,svc:new Set(),sort:"dist",q:"",me:{lat:25.0330,lng:121.5654},
   cat:"phone",prod:null,color:null,cap:null,active:null,bookings:[],favs:new Set()};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1141,6 +1165,9 @@ const LeafletMap={
     this.rl=[L.polyline(ll,{color:"#fff",weight:10,opacity:.95,lineCap:"round"}).addTo(this.m),L.polyline(ll,{color:"#FF6A00",weight:5,dashArray:mode==="WALKING"?"1 10":null,lineCap:"round"}).addTo(this.m)];
     this.m.flyToBounds(L.latLngBounds(ll).pad(.35),{duration:.7,paddingTopLeft:isMobile()?[0,0]:[420,0],paddingBottomRight:[0,isMobile()?0:220]})},
   clearRoute(){(this.rl||[]).forEach(l=>this.m.removeLayer(l));this.rl=null},
+  dropPin(loc,name){if(this.pin){this.m.removeLayer(this.pin);this.pin=null}if(!loc)return;
+    this.pin=L.marker([loc.lat,loc.lng],{icon:L.divIcon({className:"",iconSize:[0,0],html:pinHTML(name)}),zIndexOffset:20000,interactive:false}).addTo(this.m)},
+  goPlace(loc,vp){if(vp&&vp.n!=null)this.m.flyToBounds([[vp.s,vp.w],[vp.n,vp.e]],{maxZoom:16,duration:.8,paddingTopLeft:isMobile()?[0,0]:[420,0]});else this.m.flyTo([loc.lat,loc.lng],16,{duration:.8})},
   el(id){const m=this.mk[id],e=m&&m.getElement();return e&&e.querySelector(".iso-mk")},
   resize(){this.m.invalidateSize();Declutter.req()}
 };
@@ -1217,6 +1244,12 @@ const GoogleMap={
     const b=new google.maps.LatLngBounds();path.forEach(p=>b.extend(p));this.hush();
     this.m.fitBounds(b,isMobile()?{top:90,bottom:Math.round(sheetH())+250,left:40,right:40}:{top:110,bottom:260,left:460,right:110})},
   clearRoute(){(this.rl||[]).forEach(l=>l.setMap(null));this.rl=null},
+  dropPin(loc,name){if(this.pin){this.pin.map=null;this.pin=null}if(!loc)return;
+    this.pin=new this.AME({map:this.m,position:loc,content:htmlEl(pinHTML(name)),zIndex:200000})},
+  goPlace(loc,vp){this.hush();
+    const pad=isMobile()?{top:90,bottom:Math.round(sheetH())+40,left:30,right:30}:{top:100,bottom:60,left:440,right:90};
+    if(vp){this.m.fitBounds(vp,pad);google.maps.event.addListenerOnce(this.m,"idle",()=>{const z=this.m.getZoom();if(z>16.5)this.m.setZoom(16.5);else if(z<14)this.m.setZoom(14)})}
+    else{this.m.panTo(loc);this.m.setZoom(16)}},
   px(lat,lng){const pr=this.ov&&this.ov.getProjection();if(!pr)return null;const p=pr.fromLatLngToContainerPixel(new google.maps.LatLng(lat,lng));return p&&{x:p.x,y:p.y}},
   el(id){const m=this.mk[id];return m&&m.content},
   resize(){Declutter.req()}
@@ -1475,11 +1508,86 @@ function fmtDur(sec){const m=Math.max(1,Math.round(sec/60));return m<60?`${m} �
 function estRoute(o,d,mode){const km=dist(o,d)*1.3,v={WALKING:4.5,TRANSIT:18,TWO_WHEELER:28,DRIVING:24}[mode]||5;return {path:[o,d],m:km*1000,sec:km/v*3600,steps:[]}}
 const cleanStep=h=>String(h||"").replace(/<div[^>]*>/g," · ").replace(/<(?!\/?b>)[^>]+>/g,"").replace(/\s+/g," ").trim();
 
+/* ================= 搜尋（像 Google 地圖一樣）：商品＋門市＋地點／路名／地址 自動完成 ================= */
+const Search={
+  items:[],sel:-1,tok:null,seq:0,
+  init(){
+    const q=$("#q"),box=$("#sugg");
+    q.addEventListener("input",()=>{clearTimeout(this._t);const v=q.value.trim();if(!v){this.close();return}this._t=setTimeout(()=>this.suggest(v),220)});
+    q.addEventListener("focus",()=>{if(q.value.trim()&&this.items.length)box.classList.add("show")});
+    q.addEventListener("keydown",e=>{
+      if(e.key==="ArrowDown"||e.key==="ArrowUp"){if(!this.items.length)return;e.preventDefault();this.sel=(this.sel+(e.key==="ArrowDown"?1:-1)+this.items.length)%this.items.length;this.paint()}
+      else if(e.key==="Enter"){e.preventDefault();const it=this.items[this.sel>=0?this.sel:0];if(it)this.pick(it);else if(q.value.trim())this.textGo(q.value.trim())}
+      else if(e.key==="Escape"){this.close();q.blur()}
+    });
+    document.addEventListener("pointerdown",e=>{if(!e.target.closest(".search"))this.close()});
+    $("#qClear").onclick=()=>{q.value="";state.q="";this.clearRef();this.close();renderStores();renderProducts();q.focus()};
+  },
+  async suggest(v){
+    const my=++this.seq,lv=v.toLowerCase(),out=[];
+    PRODUCTS.filter(p=>(p.name+" "+p.brand).toLowerCase().includes(lv)).slice(0,3).forEach(p=>out.push({t:"prod",p,title:p.name,sub:`${p.brand} · ${CATS[p.cat]}`}));
+    STORES.filter(s=>(s.name+s.addr).toLowerCase().includes(lv)).slice(0,3).forEach(s=>out.push({t:"store",s,title:s.name,sub:s.addr}));
+    this.items=out;this.sel=-1;this.paint(true);
+    let pl=[];try{pl=await this.places(v)}catch(e){console.warn(e)}
+    if(my!==this.seq)return;
+    this.items=out.concat(pl);this.paint();
+  },
+  async places(v){
+    if(SOURCE==="google"){
+      const {AutocompleteSuggestion,AutocompleteSessionToken}=await google.maps.importLibrary("places");
+      if(!this.tok)this.tok=new AutocompleteSessionToken();
+      const c=GoogleMap.m.getCenter();
+      const {suggestions}=await AutocompleteSuggestion.fetchAutocompleteSuggestions({input:v,sessionToken:this.tok,language:"zh-TW",region:"tw",includedRegionCodes:["tw"],locationBias:{center:{lat:c.lat(),lng:c.lng()},radius:30000}});
+      return (suggestions||[]).filter(x=>x.placePrediction).slice(0,6).map(x=>{const pp=x.placePrediction;
+        return {t:"place",pp,title:pp.mainText?pp.mainText.text:pp.text.text,sub:pp.secondaryText?pp.secondaryText.text:""}});
+    }
+    /* 示意模式：用 OpenStreetMap 地名搜尋 */
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=tw&accept-language=zh-TW&limit=6&q=${encodeURIComponent(v)}`);
+    const j=await r.json();
+    return j.map(x=>({t:"place",osm:x,title:x.name||x.display_name.split(",")[0],sub:x.display_name.split(",").slice(1,4).join("、")}));
+  },
+  paint(loading){
+    const box=$("#sugg"),ic={prod:"🛍️",store:"🏬",place:"📍"},lb={prod:"商品",store:"門市",place:"地點"};let last="";
+    box.innerHTML=this.items.map((it,i)=>{const h=it.t!==last?`<div class="sg-h">${lb[it.t]}</div>`:"";last=it.t;
+      return h+`<button class="sg ${i===this.sel?"on":""}" data-sg="${i}"><span class="sg-i">${ic[it.t]}</span><span class="sg-t"><b>${esc(it.title)}</b>${it.sub?`<small>${esc(it.sub)}</small>`:""}</span></button>`}).join("")
+      +(loading?`<div class="sg-load">搜尋地點中…</div>`:(!this.items.length?`<div class="sg-load">找不到「${esc($("#q").value.trim())}」</div>`:""));
+    box.classList.add("show");
+    box.querySelectorAll("[data-sg]").forEach(b=>b.onclick=()=>this.pick(this.items[+b.dataset.sg]));
+  },
+  close(){$("#sugg").classList.remove("show");this.sel=-1},
+  async pick(it){
+    const q=$("#q");this.close();
+    if(it.t==="prod"){q.value=it.p.name;state.q="";setTab("products");state.cat=it.p.cat;state.brand="";state.prod=it.p;state.color=it.p.colors[0];state.cap=it.p.caps[0];renderProducts();return}
+    if(it.t==="store"){q.value=it.s.name;state.q="";setTab("stores");openDetail(it.s.id);return}
+    q.value=it.title;state.q="";
+    try{
+      let loc,vp;
+      if(it.pp){const place=it.pp.toPlace();await place.fetchFields({fields:["location","viewport","displayName"]});this.tok=null;
+        loc={lat:place.location.lat(),lng:place.location.lng()};vp=place.viewport}
+      else{const o=it.osm;loc={lat:+o.lat,lng:+o.lon};if(o.boundingbox){const b=o.boundingbox.map(Number);vp={s:b[0],n:b[1],w:b[2],e:b[3]}}}
+      this.go(it.title,loc,vp);
+    }catch(e){console.error(e);toast("無法取得這個地點的位置")}
+  },
+  async textGo(v){ /* 沒有選建議時：直接文字搜尋第一個地點 */
+    try{let pl=await this.places(v);if(pl[0])return this.pick(pl[0]);
+      if(SOURCE==="google"){const {Place}=await google.maps.importLibrary("places");const {places}=await Place.searchByText({textQuery:v,fields:["location","viewport","displayName"],region:"tw",language:"zh-TW",maxResultCount:1});
+        if(places&&places[0]){const p=places[0];return this.go(p.displayName||v,{lat:p.location.lat(),lng:p.location.lng()},p.viewport)}}
+      toast(`找不到「${v}」`)}catch(e){console.error(e);toast(`找不到「${v}」`)}
+  },
+  go(name,loc,vp){
+    state.ref={...loc,name};setTab("stores");
+    MAP.dropPin&&MAP.dropPin(loc,name);MAP.goPlace(loc,vp);
+    renderStores();
+    setTimeout(()=>{const n=STORES.filter(s=>dist(loc,s)<1.5).length;pill(n?`「${name}」附近 1.5 公里內有 ${n} 間門市`:`正在找「${name}」附近的門市…`,false,2600)},1800);
+  },
+  clearRef(){state.ref=null;MAP.dropPin&&MAP.dropPin(null)}
+};
+
 /* ================= 門市列表 ================= */
 function filteredStores(){
   const q=state.q.trim().toLowerCase();
   return STORES.filter(s=>(!state.city||s.city===state.city)&&(!state.openNow||isOpen(s))&&[...state.svc].every(v=>s.svc.includes(v))&&(!q||(s.name+s.addr+s.city).toLowerCase().includes(q)))
-    .map(s=>({...s,d:dist(state.me,s),qu:queueOf(s)})).sort((a,b)=>state.sort==="queue"?a.qu-b.qu:a.d-b.d);
+    .map(s=>({...s,d:dist(state.ref||state.me,s),qu:queueOf(s)})).sort((a,b)=>state.sort==="queue"?a.qu-b.qu:a.d-b.d);
 }
 function storeRow(s,extra=""){
   const [oc,ot]=openLabel(s);
@@ -1691,10 +1799,10 @@ $("#sort").onchange=e=>{state.sort=e.target.value;renderStores()};
 $("#svcChips").innerHTML=Object.entries(SVC).map(([k,v])=>`<button class="chip" data-svc="${k}">${v}</button>`).join("");
 document.querySelectorAll("[data-svc]").forEach(b=>b.onclick=()=>{const k=b.dataset.svc;state.svc.has(k)?state.svc.delete(k):state.svc.add(k);b.classList.toggle("on");renderStores()});
 const isProductQuery=q=>q&&PRODUCTS.some(p=>p.name.toLowerCase().includes(q.toLowerCase()));
-let qt;$("#q").oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{state.q=e.target.value;
-  if(isProductQuery(state.q)&&state.tab!=="products")setTab("products");else if(!isProductQuery(state.q)&&state.q&&state.tab!=="stores")setTab("stores");
-  renderStores();renderProducts()},200)};
-$("#q").onkeydown=e=>{if(e.key!=="Enter"||SOURCE!=="google")return;const q=e.target.value.trim();if(!q||isProductQuery(q))return;state.q="";e.target.value="";setTab("stores");keywordSearch(q)};
+/* 輸入時只在「確定是商品名稱」時即時篩選商品；地點與門市交給下拉建議 */
+let qt;$("#q").oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{const v=e.target.value;state.q=isProductQuery(v)?v:"";
+  if(state.q&&state.tab!=="products")setTab("products");renderStores();renderProducts()},200)};
+
 $("#locBtn").onclick=()=>{
   const btn=$("#locBtn");
   if(!navigator.geolocation){toast("此瀏覽器不支援定位");return}
@@ -1702,7 +1810,7 @@ $("#locBtn").onclick=()=>{
   btn.classList.add("busy");toast("定位中…");
   const done=()=>btn.classList.remove("busy");
   navigator.geolocation.getCurrentPosition(p=>{done();
-      state.me={lat:p.coords.latitude,lng:p.coords.longitude};MAP.setMe(state.me.lat,state.me.lng);MAP.flyTo(state.me.lat,state.me.lng,15);
+      state.me={lat:p.coords.latitude,lng:p.coords.longitude};Search.clearRef();MAP.setMe(state.me.lat,state.me.lng);MAP.flyTo(state.me.lat,state.me.lng,15);
       renderStores();renderSpec();toast("已移到您目前的位置");if(SOURCE==="google")setTimeout(()=>searchArea(),900)},
     err=>{done();
       const fileProto=location.protocol==="file:";
@@ -1898,6 +2006,7 @@ document.addEventListener("keydown",e=>{
 
 /* ================= 啟動 ================= */
 function ready(){
+  if(!Search._init){Search._init=1;Search.init()}
   const b=$("#srcBadge");
   if(SOURCE==="google"){b.textContent="Google 地圖 · 庫存示意";b.classList.add("g")}else{b.textContent="示意資料";b.classList.remove("g")}
   applyDev();
