@@ -62,7 +62,9 @@ a{color:inherit}
 .logo{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#FFF3EA);display:grid;place-items:center;flex:none;box-shadow:0 3px 10px rgba(255,106,0,.22),inset 0 0 0 1px rgba(255,106,0,.08)}
 .logo svg{width:32px;height:32px;display:block;filter:drop-shadow(0 1px 1px rgba(120,40,0,.18))}
 .brand{position:relative;overflow:hidden;background:linear-gradient(115deg,var(--card) 55%,var(--brand-50))}
-.brand::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#FFD60B,#FF9B0B 18%,#FF6700 36%,#D82400 52%,#CE2874 64%,#624BEE 78%,#0EAA7D 90%,#22DDB9)}
+.brand::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#ECE7E1 0,#FFB27A 18%,#FF6A00 30%,#FFB27A 42%,#ECE7E1 62%,#ECE7E1 100%) 0 0/800px 100% repeat-x;animation:stripe 6s linear infinite}
+@keyframes stripe{from{background-position:0 0}to{background-position:-800px 0}}
+@media (prefers-reduced-motion:reduce){.brand::after{animation:none}}
 .brand-t{min-width:0}
 .bt-co{color:var(--bt-co,#2F2E6C)}
 .bt-app{background:linear-gradient(90deg,#FF6A00,#F73603);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -267,7 +269,7 @@ body.demo .g-only{display:none}
 .iso-badge{position:absolute;top:12%;right:12%;min-width:26px;height:26px;padding:0 7px;border-radius:99px;display:grid;place-items:center;font:800 12px var(--font);color:#fff;background:var(--brand);border:2.5px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);pointer-events:none}
 .iso-badge.b-ok{background:var(--ok)}.iso-badge.b-low{background:var(--warn)}.iso-badge.b-no{background:#A3A5AB}
 #map.z-far .iso-badge{top:-10px;right:-12px;min-width:20px;height:20px;font-size:10px;padding:0 5px;border-width:2px}
-.iso-name{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%) translateY(4px);white-space:nowrap;background:var(--ink);color:#fff;font:700 12px var(--font);padding:6px 11px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;box-shadow:var(--shadow)}
+.iso-name{z-index:6;position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%) translateY(4px);white-space:nowrap;background:var(--ink);color:#fff;font:700 12px var(--font);padding:6px 11px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;box-shadow:var(--shadow)}
 .iso-name::after{content:"";position:absolute;left:50%;top:100%;margin-left:-5px;border:5px solid transparent;border-top-color:var(--ink)}
 .iso-mk:hover .iso-name,.iso-mk.active .iso-name{opacity:1;transform:translateX(-50%)}
 .me-dot{width:18px;height:18px;border-radius:50%;background:#2B7CFF;border:3px solid #fff;box-shadow:0 0 0 8px rgba(43,124,255,.22),0 2px 6px rgba(0,0,0,.25)}
@@ -279,7 +281,7 @@ body.demo .g-only{display:none}
 .mw{position:absolute;left:0;top:0;opacity:0;animation:mw 10s linear infinite}
 .mw svg{position:absolute;left:calc(-8px * var(--ms,1));bottom:calc(-2.4px * var(--ms,1));width:calc(16px * var(--ms,1));height:auto;overflow:visible}
 @keyframes mw{0%{opacity:0;transform:translate(calc(var(--x0) * var(--ms,1)),calc(var(--y0) * var(--ms,1)))}5%{opacity:1}68%{opacity:1}72%{opacity:0;transform:translate(calc(var(--x1) * var(--ms,1)),calc(var(--y1) * var(--ms,1)))}100%{opacity:0;transform:translate(calc(var(--x1) * var(--ms,1)),calc(var(--y1) * var(--ms,1)))}}
-#map.z-far .mwalk,#map.z-mid .mwalk{display:none}
+#map.z-far .mwalk,#map.z-mid .mwalk,.iso-mk.nowalk .mwalk{display:none}
 /* 簡化底圖：降低彩度，讓 3D 門市更突出 */
 /* 視覺焦點：滑鼠所在處地圖（橘色道路）最清楚，越往外越淡、直至底色 */
 .engine-g #map{background:#F4F2EE}
@@ -300,6 +302,52 @@ body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
 .book-hero span{display:block;font-size:13px;opacity:.9;margin-top:4px;line-height:1.5}
 .book-hero .btn{margin-top:14px;background:#fff;color:#E85A00;width:100%;font-weight:800;text-decoration:none}
 .book-hero svg.gm{position:absolute;right:-14px;top:-14px;width:92px;height:92px;opacity:.45;mix-blend-mode:screen}
+
+/* 熱點：取消按鈕（滑過或「管理熱點」時出現） */
+.lyr{cursor:pointer;outline:none}
+.lyr:focus-visible .lyr-dot{box-shadow:0 0 0 3px var(--brand-300),var(--shadow)}
+.lyr-x{position:absolute;right:-4px;top:-4px;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;display:none;place-items:center;box-shadow:var(--shadow-sm);z-index:2;border:2px solid var(--card)}
+.lyr-x svg{width:12px;height:12px}
+.lyr:hover .lyr-x,.layers.editing .lyr-x{display:grid}
+.layers.editing .lyr-dot{animation:wob .35s ease-in-out infinite alternate}
+@keyframes wob{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+.lyr-tools{display:flex;gap:6px}
+.lyr-toggle.on{background:var(--ink);color:var(--card)}
+@media (hover:none){.lyr:hover .lyr-x{display:none}.layers.editing .lyr-x{display:grid}}
+
+/* 熱區：稍微更鮮明，並加一圈細緻的外環 */
+.heat::after{content:"";position:absolute;inset:14%;border-radius:50%;border:1.5px solid rgba(var(--hc),.55);box-shadow:0 0 0 4px rgba(var(--hc),.08)}
+#map.z-far .heat::after{inset:10%;border-width:1px}
+/* 導航卡片 */
+.navcard{position:fixed;left:calc(16px + 400px + 16px + (100vw - 432px - 96px - 440px)/2);bottom:24px;width:440px;max-width:calc(100vw - 32px);z-index:690;background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:16px;display:none;animation:pop .22s ease}
+.navcard.show{display:block}
+body.navigating .layerbar,body.navigating .legend{display:none!important}
+.nv-load{padding:10px 4px;font-weight:700;color:var(--ink-2)}
+.nv-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.nv-head small{display:block;font-size:12px;color:var(--ink-3);font-weight:600}.nv-head b{font-size:16px;font-weight:800}
+.nv-modes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--card-2);padding:4px;border-radius:12px;margin-top:12px}
+.nv-modes button{height:32px;border-radius:9px;font-size:13px;font-weight:700;color:var(--ink-2)}
+.nv-modes button.on{background:var(--card);color:var(--brand-600);box-shadow:var(--shadow-sm)}
+.nv-sum{display:flex;align-items:baseline;gap:10px;margin-top:14px}
+.nv-sum b{font-size:28px;font-weight:900;color:var(--brand)}.nv-sum span{font-size:14px;color:var(--ink-2);font-weight:600}
+.nv-steps{margin-top:10px;font-size:13px}.nv-steps summary{cursor:pointer;color:var(--ink-2);font-weight:700}
+.nv-steps ol{margin:8px 0 0;padding-left:20px;max-height:180px;overflow:auto;line-height:1.55}
+.nv-steps li{margin-bottom:6px}.nv-steps li small{display:block;color:var(--ink-3)}
+.nv-note{margin-top:10px;font-size:12px;color:var(--ink-3)}
+.nv-act{display:flex;gap:8px;margin-top:14px}.nv-act .btn{flex:1;text-decoration:none;justify-content:center}
+.btn.ghost{background:transparent;color:var(--ink-2);font-size:13px}
+@media (max-width:860px){.navcard{left:12px;right:12px;width:auto;max-width:none;bottom:calc(64px + 150px + 12px + env(safe-area-inset-bottom))}}
+
+/* 品牌篩選 */
+.brand-chips{margin-top:8px;padding-bottom:2px}
+@media (min-width:861px){#catChips,#brandChips{flex-wrap:wrap;overflow:visible}}
+.brand-chips::-webkit-scrollbar{display:none}
+.chip.sm{height:30px;padding:0 11px;font-size:12.5px;flex:none}
+.brand-chips .chip{background:var(--card-2);border-color:transparent}
+.brand-chips .chip.on{background:var(--brand-50);color:var(--brand-600);border-color:var(--brand-300);font-weight:700}
+.chip .bc{margin-left:5px;font-size:11px;color:var(--ink-3);font-weight:600}
+.chip.on .bc{color:inherit;opacity:.7}
+.pbrand{font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.03em}
 /* 底部導覽（手機） */
 .bnav{display:none}
 
@@ -343,13 +391,13 @@ body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
 
 /* 熱度暈染 */
 .iso-mk{isolation:isolate}
-.heat{position:absolute;left:50%;top:calc(100% - var(--anchor));width:calc(var(--hs,190px) * var(--ms,1));height:calc(var(--hs,190px) * var(--ms,1) * .62);transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:-1;animation:heatin .35s ease}
+.heat{position:absolute;left:50%;top:calc(100% - var(--anchor));width:calc(var(--hs,270px) * var(--ms,1));height:calc(var(--hs,270px) * var(--ms,1) * .6);transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:-1;animation:heatin .35s ease}
 @keyframes heatin{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
 #map.z-far .heat{--hs:64px;--ms:1}
-.heat.h-g{background:radial-gradient(closest-side,rgba(20,163,90,.55),rgba(20,163,90,.22) 60%,rgba(20,163,90,0))}
-.heat.h-y{background:radial-gradient(closest-side,rgba(232,180,0,.6),rgba(232,180,0,.24) 60%,rgba(232,180,0,0))}
-.heat.h-o{background:radial-gradient(closest-side,rgba(240,122,26,.6),rgba(240,122,26,.24) 60%,rgba(240,122,26,0))}
-.heat.h-r{background:radial-gradient(closest-side,rgba(229,72,77,.6),rgba(229,72,77,.25) 60%,rgba(229,72,77,0))}
+.heat.h-g{--hc:20,163,90;background:radial-gradient(closest-side,rgba(20,163,90,.72),rgba(20,163,90,.38) 55%,rgba(20,163,90,.12) 82%,rgba(20,163,90,0))}
+.heat.h-y{--hc:232,180,0;background:radial-gradient(closest-side,rgba(232,180,0,.72),rgba(232,180,0,.38) 55%,rgba(232,180,0,.12) 82%,rgba(232,180,0,0))}
+.heat.h-o{--hc:240,122,26;background:radial-gradient(closest-side,rgba(240,122,26,.72),rgba(240,122,26,.38) 55%,rgba(240,122,26,.12) 82%,rgba(240,122,26,0))}
+.heat.h-r{--hc:229,72,77;background:radial-gradient(closest-side,rgba(229,72,77,.72),rgba(229,72,77,.38) 55%,rgba(229,72,77,.12) 82%,rgba(229,72,77,0))}
 .iso-badge.b-g{background:#14A35A}.iso-badge.b-y{background:#E0A800}.iso-badge.b-o{background:#F07A1A}.iso-badge.b-r{background:#E5484D}
 .hk-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .hk-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:var(--card-2)}
@@ -381,7 +429,7 @@ body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
   .lyr-dot{width:44px;height:44px}
   .lyr-dot svg{width:20px;height:20px}
   .lyr-dot .thumb-svg svg{width:32px}
-  .lyr-toggle{display:none}
+  #lyrToggle{display:none}
   .layerbar{left:10px;right:62px;bottom:calc(var(--sheet-h,46vh) + 76px)}
   .layers{overflow:visible;max-height:none}
   .lb-card{padding:10px 12px;border-radius:18px}
@@ -474,7 +522,7 @@ body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
   <section class="view" id="v-products">
     <div class="h-title">商品現貨</div>
     <div class="h-sub">選擇商品與規格，地圖會標示各門市庫存</div>
-    <div class="pad" style="padding-top:6px;padding-bottom:6px"><div class="chips" id="catChips"></div></div>
+    <div class="pad" style="padding-top:6px;padding-bottom:6px"><div class="chips" id="catChips"></div><div class="chips brand-chips" id="brandChips"></div></div>
     <div id="specBox"></div>
     <div id="prodStores"></div>
     <div class="section-t" id="prodTitle"></div>
@@ -501,6 +549,7 @@ body:not(.dev) #srcBadge,body:not(.dev) #srcBtn{display:none}
 
 <nav class="bnav" id="bnav"></nav>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="navcard" id="navcard" role="dialog" aria-label="導航"></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -545,27 +594,59 @@ const DEMO_STORES=[
  ["台東中華店","台東縣","台東縣台東市中華路 ○ 段 ○○ 號",22.7560,121.1500,"11:00-21:00",["trade","pickup"]],
 ];
 let STORES=[];
-const CATS={phone:"手機",tablet:"平板",wear:"穿戴",audio:"耳機",acc:"配件",home:"智慧家庭"};
+const CATS={phone:"手機",tablet:"平板",wear:"穿戴．AI 眼鏡",audio:"耳機．音響",pc:"電腦．周邊",game:"電玩．娛樂",home:"家電．智慧家庭",acc:"配件"};
+/* 商品與品牌參考 myfone 購物官網分類（價格為示意，實際以官網為準） */
 const PRODUCTS=[
- {id:"duo",name:"iPhone Duo",cat:"phone",price:74900,ic:"📖",colors:["星光白","夜空色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
- {id:"ip18pm",name:"iPhone 18 Pro Max",cat:"phone",price:49900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
- {id:"ip18p",name:"iPhone 18 Pro",cat:"phone",price:44900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
- {id:"ip17p",name:"iPhone 17 Pro",cat:"phone",price:36900,ic:"📱",colors:["沙漠鈦","黑色鈦","白色鈦"],caps:["256GB","512GB","1TB"]},
- {id:"ip17",name:"iPhone 17",cat:"phone",price:29900,ic:"📱",colors:["藍","粉","黑"],caps:["128GB","256GB"]},
- {id:"s26u",name:"Galaxy S26 Ultra",cat:"phone",price:42900,ic:"📱",colors:["鈦灰","鈦黑","鈦紫"],caps:["256GB","512GB"]},
- {id:"flip",name:"Galaxy Z Flip7",cat:"phone",price:35900,ic:"📲",colors:["薄荷","酷黑","冰藍"],caps:["256GB","512GB"]},
- {id:"px10",name:"Pixel 10 Pro",cat:"phone",price:33900,ic:"📱",colors:["曜石黑","瓷白"],caps:["128GB","256GB"]},
- {id:"x15t",name:"Xiaomi 15T Pro",cat:"phone",price:19990,ic:"📱",colors:["黑","灰","金"],caps:["256GB","512GB"]},
- {id:"ipadair",name:"iPad Air 11吋",cat:"tablet",price:19900,ic:"💻",colors:["太空灰","星光","藍"],caps:["128GB","256GB"]},
- {id:"tabs10",name:"Galaxy Tab S10 FE",cat:"tablet",price:15900,ic:"💻",colors:["灰","銀"],caps:["128GB"]},
- {id:"aw",name:"Apple Watch Series",cat:"wear",price:13900,ic:"⌚",colors:["午夜","星光"],caps:["42mm","46mm"]},
- {id:"airpods",name:"AirPods Pro",cat:"audio",price:7490,ic:"🎧",colors:["白"],caps:["USB-C"]},
- {id:"buds",name:"Galaxy Buds3 Pro",cat:"audio",price:6990,ic:"🎧",colors:["銀","白"],caps:["標準"]},
- {id:"chg",name:"45W 快充組",cat:"acc",price:990,ic:"🔌",colors:["白","黑"],caps:["單孔","雙孔"]},
- {id:"case",name:"MagSafe 防摔殼",cat:"acc",price:1290,ic:"🛡️",colors:["透明","黑","粉"],caps:["iPhone 17 Pro","iPhone 17"]},
- {id:"cam",name:"智慧居家攝影機",cat:"home",price:1990,ic:"📷",colors:["白"],caps:["2K"]},
- {id:"router",name:"5G 行動分享器",cat:"home",price:5990,ic:"📡",colors:["黑"],caps:["Wi-Fi 6"]},
+ {id:"duo",brand:"Apple",name:"iPhone Duo",cat:"phone",price:74900,ic:"📖",colors:["星光白","夜空色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip18pm",brand:"Apple",name:"iPhone 18 Pro Max",cat:"phone",price:49900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip18p",brand:"Apple",name:"iPhone 18 Pro",cat:"phone",price:44900,ic:"📱",colors:["勃根地紅","冰川藍","銀色","黑色"],caps:["256GB","512GB","1TB","2TB"],isNew:true},
+ {id:"ip17p",brand:"Apple",name:"iPhone 17 Pro",cat:"phone",price:36900,ic:"📱",colors:["沙漠鈦","黑色鈦","白色鈦"],caps:["256GB","512GB","1TB"]},
+ {id:"ip17",brand:"Apple",name:"iPhone 17",cat:"phone",price:29900,ic:"📱",colors:["藍","粉","黑"],caps:["128GB","256GB"]},
+ {id:"s26u",brand:"SAMSUNG",name:"Galaxy S26 Ultra",cat:"phone",price:44900,ic:"📱",colors:["鈦灰","鈦黑","鈦紫"],caps:["256GB","512GB"],isNew:true},
+ {id:"flip",brand:"SAMSUNG",name:"Galaxy Z Flip8",cat:"phone",price:44900,ic:"📲",colors:["薄荷","酷黑","冰藍"],caps:["256GB","512GB"],isNew:true},
+ {id:"px11",brand:"Google",name:"Pixel 11 Pro XL",cat:"phone",price:42990,ic:"📱",colors:["曜石黑","瓷白","霧綠"],caps:["256GB","512GB"],isNew:true},
+ {id:"px10",brand:"Google",name:"Pixel 10 Pro",cat:"phone",price:33900,ic:"📱",colors:["曜石黑","瓷白"],caps:["128GB","256GB"]},
+ {id:"x15t",brand:"小米",name:"Xiaomi 15T Pro",cat:"phone",price:19990,ic:"📱",colors:["黑","灰","金"],caps:["256GB","512GB"]},
+ {id:"razrf",brand:"motorola",name:"motorola razr fold",cat:"phone",price:49988,ic:"📲",colors:["黑","藍"],caps:["512GB"],isNew:true},
+ {id:"edge70",brand:"motorola",name:"moto edge 70",cat:"phone",price:16990,ic:"📱",colors:["綠","灰"],caps:["256GB"]},
+ {id:"reno16f",brand:"OPPO",name:"OPPO Reno16 F",cat:"phone",price:18990,ic:"📱",colors:["紫","黑"],caps:["128GB","256GB"]},
+ {id:"aquos",brand:"SHARP",name:"AQUOS R11",cat:"phone",price:26990,ic:"📱",colors:["黑","白"],caps:["256GB"]},
+ {id:"np4a",brand:"Nothing",name:"Nothing Phone (4a)",cat:"phone",price:14990,ic:"📱",colors:["白","黑"],caps:["128GB","256GB"]},
+ {id:"zen",brand:"ASUS",name:"Zenfone 系列",cat:"phone",price:23990,ic:"📱",colors:["黑","白"],caps:["256GB"]},
+ {id:"vivo",brand:"vivo",name:"vivo X 系列",cat:"phone",price:27990,ic:"📱",colors:["黑","白"],caps:["256GB","512GB"]},
+ {id:"ipadair",brand:"Apple",name:"iPad Air 11吋",cat:"tablet",price:19900,ic:"💻",colors:["太空灰","星光","藍"],caps:["128GB","256GB"]},
+ {id:"tabs10",brand:"SAMSUNG",name:"Galaxy Tab S10 FE",cat:"tablet",price:15900,ic:"💻",colors:["灰","銀"],caps:["128GB"]},
+ {id:"xpad",brand:"小米",name:"Xiaomi Pad",cat:"tablet",price:11990,ic:"💻",colors:["灰","藍"],caps:["128GB","256GB"]},
+ {id:"aw",brand:"Apple",name:"Apple Watch Series",cat:"wear",price:13900,ic:"⌚",colors:["午夜","星光"],caps:["42mm","46mm"]},
+ {id:"gw",brand:"SAMSUNG",name:"Galaxy Watch",cat:"wear",price:9990,ic:"⌚",colors:["銀","黑"],caps:["40mm","44mm"]},
+ {id:"pw",brand:"Google",name:"Pixel Watch",cat:"wear",price:10990,ic:"⌚",colors:["曜石黑","瓷白"],caps:["41mm","45mm"]},
+ {id:"even",brand:"Even Realities",name:"Even Realities AI 眼鏡",cat:"wear",price:19990,ic:"👓",colors:["灰","棕"],caps:["標準"],isNew:true},
+ {id:"vive",brand:"HTC",name:"HTC VIVE Eagle AI 眼鏡套裝",cat:"wear",price:15600,ic:"🕶️",colors:["黑"],caps:["標準"],isNew:true},
+ {id:"airpods",brand:"Apple",name:"AirPods Pro 3",cat:"audio",price:7490,ic:"🎧",colors:["白"],caps:["USB-C"]},
+ {id:"buds",brand:"SAMSUNG",name:"Galaxy Buds3 Pro",cat:"audio",price:6990,ic:"🎧",colors:["銀","白"],caps:["標準"]},
+ {id:"pbuds",brand:"Google",name:"Pixel Buds Pro 2",cat:"audio",price:7490,ic:"🎧",colors:["黑","白"],caps:["標準"]},
+ {id:"xm6",brand:"SONY",name:"SONY WH-1000XM6",cat:"audio",price:14900,ic:"🎧",colors:["黑","銀"],caps:["標準"]},
+ {id:"marshall",brand:"Marshall",name:"Marshall 藍牙喇叭",cat:"audio",price:8990,ic:"🔊",colors:["黑","奶油"],caps:["標準"]},
+ {id:"mba",brand:"Apple",name:"MacBook Air 13吋 (M5)",cat:"pc",price:42900,ic:"💻",colors:["午夜","星光","銀"],caps:["16G/512G"],isNew:true},
+ {id:"mbneo",brand:"Apple",name:"MacBook Neo 13吋",cat:"pc",price:22900,ic:"💻",colors:["銀","粉"],caps:["8G/256G"],isNew:true},
+ {id:"macmini",brand:"Apple",name:"Mac mini (M4)",cat:"pc",price:26900,ic:"🖥️",colors:["銀"],caps:["16G/256G","16G/512G"]},
+ {id:"gcloud",brand:"Logitech",name:"Logitech G CLOUD 掌機",cat:"pc",price:11990,ic:"🎮",colors:["白"],caps:["標準"]},
+ {id:"portal",brand:"SONY",name:"PS Portal 遙控遊玩機",cat:"game",price:6480,ic:"🎮",colors:["白"],caps:["標準"]},
+ {id:"gta6",brand:"SONY",name:"GTA VI 高級典藏盒",cat:"game",price:15990,ic:"💿",colors:["典藏版"],caps:["PS5"],isNew:true},
+ {id:"switch",brand:"Nintendo",name:"Nintendo Switch 2",cat:"game",price:13980,ic:"🕹️",colors:["黑"],caps:["標準","同捆組"]},
+ {id:"dji",brand:"DJI",name:"DJI Osmo 口袋相機",cat:"game",price:15990,ic:"📷",colors:["黑"],caps:["標準","全能套裝"]},
+ {id:"dyson",brand:"Dyson",name:"Dyson V8 SV25 吸塵器",cat:"home",price:16900,ic:"🧹",colors:["銀"],caps:["標準"]},
+ {id:"sbair",brand:"SwitchBot",name:"SwitchBot 空氣清淨機 Table",cat:"home",price:9590,ic:"🌬️",colors:["白"],caps:["標準"]},
+ {id:"tcl55",brand:"TCL",name:"TCL 55吋 QLED Google TV",cat:"home",price:28970,ic:"📺",colors:["黑"],caps:["55吋","含 Soundbar"]},
+ {id:"gtv",brand:"Google",name:"Google TV Streamer 4K",cat:"home",price:3250,ic:"📺",colors:["白"],caps:["4K"]},
+ {id:"philips",brand:"Philips",name:"Philips 智慧照明組",cat:"home",price:3990,ic:"💡",colors:["白"],caps:["入門組"]},
+ {id:"cam",brand:"台灣大哥大",name:"智慧居家攝影機",cat:"home",price:1990,ic:"📷",colors:["白"],caps:["2K"]},
+ {id:"router",brand:"台灣大哥大",name:"5G 行動分享器",cat:"home",price:5990,ic:"📡",colors:["黑"],caps:["Wi-Fi 6"]},
+ {id:"chg",brand:"mySelect",name:"45W 快充組",cat:"acc",price:990,ic:"🔌",colors:["白","黑"],caps:["單孔","雙孔"]},
+ {id:"case",brand:"mySelect",name:"MagSafe 防摔殼",cat:"acc",price:1290,ic:"🛡️",colors:["透明","黑","粉"],caps:["iPhone 18 Pro","iPhone 17"]},
+ {id:"pen",brand:"Apple",name:"Apple Pencil Pro",cat:"acc",price:4290,ic:"✏️",colors:["白"],caps:["標準"]},
 ];
+const BRAND_ORDER=["Apple","SAMSUNG","Google","小米","ASUS","motorola","vivo","OPPO","SONY","SHARP","Nothing","HTC","Even Realities","Marshall","Logitech","Nintendo","DJI","Dyson","SwitchBot","TCL","Philips","台灣大哥大","mySelect"];
 function hash(str){let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 function stockOf(s,pid,color,cap){const h=hash(`${s.key}|${pid}|${color}|${cap}`)%100;let q=h<22?0:h<45?1+(h%3):4+(h%14);if(s.flag)q+=3;return q}
 const lvl=q=>q===0?"no":q<=3?"low":"ok";
@@ -884,26 +965,28 @@ function personFig(h,bag){
    +(bun?`<circle cx="-.6" cy="-17.6" r="1.6" fill="${ha}"/>`:"")
    +`<circle cx="1.6" cy="-12.6" r=".42" fill="#2b1d10"/><circle cx="-.6" cy="-12.6" r=".42" fill="#2b1d10"/><circle cx="2.7" cy="-11.4" r=".75" fill="#FF8FA3" opacity=".55"/></g>`;
 }
-/* 地圖上的行人：走進門市、提袋走出來、沿街經過，偶爾從門市後方繞過（會被建築遮住）。
+/* 地圖上的行人：每人一條專屬路線（進店、出店、沿街經過、店旁側邊），彼此不交叉、也不會走到門市圖樣後方。
    位移以「基準像素」計算，CSS 再乘上 --ms，放大地圖時人和門市一起變大。 */
 function mapWalkers(s,sc,basePx){
   if(!sc.door)return {};
   const k=basePx/sc.vw,d=[-.866,.5],e=[.866,.5],a=sc.dp,
-    dEdge=Math.hypot(sc.ep[0]-a[0],sc.ep[1]-a[1]),doorY=(2*(a[1]+G)-a[0]/C30)/2;
-  const n=3+hash(s.key+"ppl")%2;let fr="",bk="";
+    dEdge=Math.hypot(sc.ep[0]-a[0],sc.ep[1]-a[1]),
+    doorX=(2*(a[1]+G)+a[0]/C30)/2,W=sc.vw>110?60:48;
+  const kinds=["in","pass","out","side"],rot=hash(s.key+"rot")%4,n=3+hash(s.key+"ppl")%2;let fr="";
   for(let i=0;i<n;i++){
-    const h=hash(s.key+"w"+i),kind=i===0?"in":["in","out","pass","behind"][(h>>2)%4],sg=(h>>15)&1?1:-1;
+    const h=hash(s.key+"w"+i),kind=kinds[(i+rot)%4];
+    const at=(x,y)=>[d[0]*x+e[0]*y,d[1]*x+e[1]*y]; /* x：沿門口方向往外，y：沿街方向 */
     let A,B;
-    if(kind==="in"||kind==="out"){const f=dEdge+30+(h>>6)%50,F=[d[0]*f,d[1]*f];[A,B]=kind==="in"?[F,[0,0]]:[[0,0],F]}
-    else{const o=kind==="pass"?dEdge+4+(h>>9)%7:-(doorY+5+(h>>9)%5),L=40+(h>>12)%30;
-      A=[d[0]*o-e[0]*L*sg,d[1]*o-e[1]*L*sg];B=[d[0]*o+e[0]*L*sg,d[1]*o+e[1]*L*sg]}
+    if(kind==="in"){A=at(dEdge+18,5.5);B=at(0,3)}
+    else if(kind==="out"){A=at(0,-3);B=at(dEdge+18,-5.5)}
+    else if(kind==="pass"){const L=38+(h>>12)%16,sg=(h>>15)&1?1:-1;A=at(dEdge+27,-L*sg);B=at(dEdge+27,L*sg)}
+    else{const off=W-doorX+7,sg=(h>>15)&1?1:-1;const P1=at(-10,off),P2=at(dEdge+20,off);[A,B]=sg>0?[P1,P2]:[P2,P1]}
     A=A.map(v=>v*k);B=B.map(v=>v*k);
-    const dist=Math.hypot(B[0]-A[0],B[1]-A[1]),dur=+(dist/10/.72+(h%5)).toFixed(1),flip=B[0]<A[0];
-    const el=`<i class="mw" style="--x0:${A[0].toFixed(1)}px;--y0:${A[1].toFixed(1)}px;--x1:${B[0].toFixed(1)}px;--y1:${B[1].toFixed(1)}px;animation-duration:${dur}s;animation-delay:-${((h>>4)%(dur*10)/10).toFixed(1)}s"><svg viewBox="-6.5 -19.5 13 21.5"${flip?' style="transform:scaleX(-1)"':""}>${personFig(h,kind==="out"&&(h>>3)%3!==0)}</svg></i>`;
-    if(kind==="behind")bk+=el;else fr+=el;
+    const dist=Math.hypot(B[0]-A[0],B[1]-A[1]),dur=+(dist/10/.72+2+(h%4)).toFixed(1),flip=B[0]<A[0];
+    const delay=(dur*i/n+(h%7)/10).toFixed(1);
+    fr+=`<i class="mw" style="--x0:${A[0].toFixed(1)}px;--y0:${A[1].toFixed(1)}px;--x1:${B[0].toFixed(1)}px;--y1:${B[1].toFixed(1)}px;animation-duration:${dur}s;animation-delay:-${delay}s"><svg viewBox="-6.5 -19.5 13 21.5"${flip?' style="transform:scaleX(-1)"':""}>${personFig(h,kind==="out"&&(h>>3)%3!==0)}</svg></i>`;
   }
-  const pos=`left:${sc.door[0]}%;top:${sc.door[1]}%`;
-  return {front:`<div class="mwalk front" style="${pos}">${fr}</div>`,back:bk?`<div class="mwalk back" style="${pos}">${bk}</div>`:""};
+  return {front:`<div class="mwalk front" style="left:${sc.door[0]}%;top:${sc.door[1]}%">${fr}</div>`};
 }
 const sceneCache={},BASE_W={store:156,flag:192};
 function scene(kind,l=""){const k=kind+"|"+l;if(!sceneCache[k]){BB=[1e9,1e9,-1e9,-1e9];WALK=[];sceneCache[k]=SCENES[kind](l)}return sceneCache[k]}
@@ -923,7 +1006,7 @@ function styleGallery(){
 function htmlEl(h){const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstElementChild}
 
 /* ================= 狀態與工具 ================= */
-const state={tab:"stores",city:"",openNow:false,svc:new Set(),sort:"dist",q:"",me:{lat:25.0330,lng:121.5654},
+const state={brand:"",tab:"stores",city:"",openNow:false,svc:new Set(),sort:"dist",q:"",me:{lat:25.0330,lng:121.5654},
   cat:"phone",prod:null,color:null,cap:null,active:null,bookings:[],favs:new Set()};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1054,6 +1137,10 @@ const LeafletMap={
   getView(){const c=this.m.getCenter();return {lat:c.lat,lng:c.lng,zoom:this.m.getZoom()}},
   setView(v){this.m.flyTo([v.lat,v.lng],v.zoom,{duration:.7})},
   px(lat,lng){return this.m.latLngToContainerPoint([lat,lng])},
+  drawRoute(path,mode){this.clearRoute();const ll=path.map(p=>[p.lat,p.lng]);
+    this.rl=[L.polyline(ll,{color:"#fff",weight:10,opacity:.95,lineCap:"round"}).addTo(this.m),L.polyline(ll,{color:"#FF6A00",weight:5,dashArray:mode==="WALKING"?"1 10":null,lineCap:"round"}).addTo(this.m)];
+    this.m.flyToBounds(L.latLngBounds(ll).pad(.35),{duration:.7,paddingTopLeft:isMobile()?[0,0]:[420,0],paddingBottomRight:[0,isMobile()?0:220]})},
+  clearRoute(){(this.rl||[]).forEach(l=>this.m.removeLayer(l));this.rl=null},
   el(id){const m=this.mk[id],e=m&&m.getElement();return e&&e.querySelector(".iso-mk")},
   resize(){this.m.invalidateSize();Declutter.req()}
 };
@@ -1086,7 +1173,9 @@ const GoogleMap={
     const el=htmlEl(html);let m=this.mk[s.id];
     if(!m){m=new this.AME({map:this.m,position:{lat:s.lat,lng:s.lng},content:el,gmpClickable:true});m.addEventListener("gmp-click",()=>openDetail(s.id));this.mk[s.id]=m}
     else m.content=el;
-    m.zIndex=active?100000:Math.round((90-s.lat)*1000);
+    const base=active?100000:Math.round((90-s.lat)*1000);m.zIndex=base;
+    /* 滑鼠移入時整個門市（含名稱）浮到最上層，不被其他門市擋住 */
+    el.addEventListener("pointerenter",()=>{m.zIndex=300000});el.addEventListener("pointerleave",()=>{m.zIndex=base});
   },
   hush(){this.quiet=true;clearTimeout(this._q);this._q=setTimeout(()=>this.quiet=false,1400)},
   camera(to,ms=650){
@@ -1107,6 +1196,27 @@ const GoogleMap={
   zoom(d){this.m.setZoom(Math.round(this.m.getZoom()+d))},
   getView(){const c=this.m.getCenter();return {lat:c.lat(),lng:c.lng(),zoom:this.m.getZoom()}},
   setView(v){this.hush();this.m.panTo({lat:v.lat,lng:v.lng});this.m.setZoom(v.zoom);setTimeout(()=>searchArea(true),900)},
+  async route(o,d,mode){
+    const lib=await google.maps.importLibrary("routes");
+    const ll=p=>({lat:typeof p.lat==="function"?p.lat():p.lat,lng:typeof p.lng==="function"?p.lng():p.lng});
+    /* 新版 Routes API（需啟用 Routes API） */
+    if(lib.Route&&lib.Route.computeRoutes){try{
+      const {routes}=await lib.Route.computeRoutes({origin:o,destination:d,travelMode:mode,language:"zh-TW",region:"TW",fields:["path","distanceMeters","durationMillis","legs"]});
+      const r=routes&&routes[0];if(r&&r.path&&r.path.length){const st=(r.legs&&r.legs[0]&&r.legs[0].steps)||[];
+        return {path:r.path.map(ll),m:r.distanceMeters||0,sec:(r.durationMillis||0)/1000,steps:st.map(x=>({html:cleanStep(x.instructions||(x.navigationInstruction&&x.navigationInstruction.instructions)),dist:x.distanceMeters})).filter(x=>x.html)}}
+    }catch(e){console.warn("Routes API",e)}}
+    /* 舊版 Directions（需啟用 Directions API），機車改以開車計算 */
+    const ds=new lib.DirectionsService();const tm=mode==="TWO_WHEELER"?"DRIVING":mode;
+    const res=await ds.route({origin:o,destination:d,travelMode:google.maps.TravelMode[tm]});
+    const r=res.routes[0],leg=r.legs[0];
+    return {path:r.overview_path.map(ll),m:leg.distance.value,sec:leg.duration.value,steps:leg.steps.map(x=>({html:cleanStep(x.instructions),dist:x.distance&&x.distance.value}))};
+  },
+  drawRoute(path,mode,est){this.clearRoute();
+    const dot=mode==="WALKING"||est?{strokeOpacity:0,icons:[{icon:{path:google.maps.SymbolPath.CIRCLE,fillOpacity:1,fillColor:"#FF6A00",strokeOpacity:0,scale:3.2},offset:"0",repeat:"11px"}]}:{strokeColor:"#FF6A00",strokeOpacity:1};
+    this.rl=[new google.maps.Polyline({map:this.m,path,strokeColor:"#FFFFFF",strokeOpacity:.95,strokeWeight:11,zIndex:1}),new google.maps.Polyline({map:this.m,path,strokeWeight:5,zIndex:2,...dot})];
+    const b=new google.maps.LatLngBounds();path.forEach(p=>b.extend(p));this.hush();
+    this.m.fitBounds(b,isMobile()?{top:90,bottom:Math.round(sheetH())+250,left:40,right:40}:{top:110,bottom:260,left:460,right:110})},
+  clearRoute(){(this.rl||[]).forEach(l=>l.setMap(null));this.rl=null},
   px(lat,lng){const pr=this.ov&&this.ov.getProjection();if(!pr)return null;const p=pr.fromLatLngToContainerPixel(new google.maps.LatLng(lat,lng));return p&&{x:p.x,y:p.y}},
   el(id){const m=this.mk[id];return m&&m.content},
   resize(){Declutter.req()}
@@ -1141,6 +1251,10 @@ const Declutter={
         if(ax/sx+ay/sy<.94||(ax<sx*.55&&ay<Math.max(it.h,q.h)*.85)){mini=true;break}}}
       it.el.classList.toggle("mini",mini);
       if(!mini)placed.push(it);
+      /* 鄰近有其他門市時不放小人，避免小人被別的門市擋住或疊在一起 */
+      let crowd=false;if(!mini&&!far)for(const q of items){if(q===it)continue;const ax=Math.abs(q.p.x-it.p.x),dy=q.p.y-it.p.y;
+        if(ax<it.rx*2.3+q.rx&&dy>-q.h*.9&&dy<it.ry*4.2+q.ry){crowd=true;break}}
+      it.el.classList.toggle("nowalk",crowd);
       /* 透明度：焦點內 1，往外漸淡到 .35；被介面擋住 .1 */
       const box={l:it.p.x-it.rx,r:it.p.x+it.rx,t:it.p.y-(mini?30:it.h),b:it.p.y+it.ry};
       let cov=0;const A=(box.r-box.l)*(box.b-box.t);
@@ -1319,6 +1433,48 @@ function refreshMarkers(){
 }
 function refreshAll(){renderCityOptions();renderStores();renderProducts();if(state.layer)renderLayerBar()}
 
+/* ================= 站內導航：不跳出網頁，直接在地圖上畫路線 ================= */
+const NAV_MODES=[["WALKING","步行"],["TRANSIT","大眾運輸"],["TWO_WHEELER","機車"],["DRIVING","開車"]];
+const Nav={
+  s:null,mode:"WALKING",open:false,
+  async start(s){
+    this.s=s;this.open=true;document.body.classList.add("navigating");
+    this.card(`<div class="nv-load">規劃路線中…</div>`);
+    const o=await this.origin();this.o=o;await this.go();
+  },
+  origin(){ /* 嘗試取得目前位置（最多等 4 秒），否則用目前的「我的位置」 */
+    return new Promise(r=>{if(!navigator.geolocation)return r(state.me);
+      let done=false;const t=setTimeout(()=>{if(!done){done=true;r(state.me)}},4000);
+      navigator.geolocation.getCurrentPosition(p=>{if(done)return;done=true;clearTimeout(t);state.me={lat:p.coords.latitude,lng:p.coords.longitude};MAP.setMe(state.me.lat,state.me.lng);r(state.me)},
+        ()=>{if(!done){done=true;clearTimeout(t);r(state.me)}},{timeout:3800,maximumAge:60000})});
+  },
+  async go(){
+    const s=this.s,d={lat:s.lat,lng:s.lng};
+    this.card(`<div class="nv-load">規劃路線中…</div>`);
+    let r=null;try{r=MAP.route?await MAP.route(this.o,d,this.mode):null}catch(e){console.warn(e)}
+    if(!r){r=estRoute(this.o,d,this.mode);r.est=true}
+    MAP.drawRoute&&MAP.drawRoute(r.path,this.mode,r.est);
+    this.r=r;this.render();
+  },
+  render(){
+    const r=this.r,s=this.s,ext=`https://www.google.com/maps/dir/?api=1&origin=${this.o.lat},${this.o.lng}&destination=${s.lat},${s.lng}&travelmode=${{WALKING:"walking",TRANSIT:"transit",TWO_WHEELER:"two-wheeler",DRIVING:"driving"}[this.mode]}`;
+    const steps=(r.steps||[]).slice(0,12);
+    this.card(`<div class="nv-head"><div><small>導航到</small><b>${esc(s.name)}</b></div><button class="iconbtn" id="nvX" aria-label="結束導航">${ICON.x}</button></div>
+      <div class="nv-modes">${NAV_MODES.map(([k,l])=>`<button class="${this.mode===k?"on":""}" data-nvm="${k}">${l}</button>`).join("")}</div>
+      <div class="nv-sum"><b class="num">${fmtDur(r.sec)}</b><span class="num">${fmtD(r.m/1000)}${r.est?" · 直線估算":""}</span></div>
+      ${steps.length?`<details class="nv-steps"><summary>路線步驟（${r.steps.length}）</summary><ol>${steps.map(x=>`<li>${x.html}<small>${x.dist?fmtD(x.dist/1000):""}</small></li>`).join("")}</ol></details>`:""}
+      ${r.est?`<div class="nv-note">${SOURCE==="google"?"路線服務尚未啟用，先以直線距離估算。":"示意模式以直線距離估算。"}</div>`:""}
+      <div class="nv-act"><button class="btn" id="nvEnd">結束導航</button><a class="btn ghost" href="${ext}" target="_blank" rel="noopener">用 Google 地圖開啟 ↗</a></div>`);
+    document.querySelectorAll("[data-nvm]").forEach(b=>b.onclick=()=>{this.mode=b.dataset.nvm;this.go()});
+    $("#nvX").onclick=$("#nvEnd").onclick=()=>this.end();
+  },
+  card(html){const c=$("#navcard");c.innerHTML=html;c.classList.add("show")},
+  end(){this.open=false;document.body.classList.remove("navigating");$("#navcard").classList.remove("show");MAP.clearRoute&&MAP.clearRoute()}
+};
+function fmtDur(sec){const m=Math.max(1,Math.round(sec/60));return m<60?`${m} 分鐘`:`${Math.floor(m/60)} 小時 ${m%60} 分`}
+function estRoute(o,d,mode){const km=dist(o,d)*1.3,v={WALKING:4.5,TRANSIT:18,TWO_WHEELER:28,DRIVING:24}[mode]||5;return {path:[o,d],m:km*1000,sec:km/v*3600,steps:[]}}
+const cleanStep=h=>String(h||"").replace(/<div[^>]*>/g," · ").replace(/<(?!\/?b>)[^>]+>/g,"").replace(/\s+/g," ").trim();
+
 /* ================= 門市列表 ================= */
 function filteredStores(){
   const q=state.q.trim().toLowerCase();
@@ -1355,10 +1511,16 @@ function renderCityOptions(){
 function renderProducts(){
   $("#catChips").innerHTML=Object.entries(CATS).map(([k,v])=>`<button class="chip ${state.cat===k?"on":""}" data-cat="${k}">${v}</button>`).join("");
   document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{state.cat=b.dataset.cat;renderProducts()});
-  const q=state.q.trim().toLowerCase(),list=PRODUCTS.filter(p=>q?p.name.toLowerCase().includes(q):p.cat===state.cat);
-  $("#prodTitle").textContent=q?`搜尋「${state.q}」`:CATS[state.cat];
+  const q=state.q.trim().toLowerCase(),inCat=PRODUCTS.filter(p=>q?(p.name+" "+p.brand).toLowerCase().includes(q):p.cat===state.cat);
+  /* 品牌篩選：只列出目前分類裡有的品牌 */
+  const brands=BRAND_ORDER.filter(b=>inCat.some(p=>p.brand===b)).concat([...new Set(inCat.map(p=>p.brand))].filter(b=>!BRAND_ORDER.includes(b)));
+  if(state.brand&&!brands.includes(state.brand))state.brand="";
+  $("#brandChips").innerHTML=brands.length>1?`<button class="chip sm ${!state.brand?"on":""}" data-brand="">全部品牌</button>`+brands.map(b=>`<button class="chip sm ${state.brand===b?"on":""}" data-brand="${esc(b)}">${esc(b)}</button>`).join(""):"";
+  document.querySelectorAll("[data-brand]").forEach(b=>b.onclick=()=>{state.brand=b.dataset.brand;renderProducts()});
+  const list=inCat.filter(p=>!state.brand||p.brand===state.brand);
+  $("#prodTitle").textContent=(q?`搜尋「${state.q}」`:CATS[state.cat])+(state.brand?` · ${state.brand}`:"")+` · ${list.length} 項`;
   $("#prodGrid").innerHTML=list.map(p=>{const n=STORES.filter(s=>stockOf(s,p.id,p.colors[0],p.caps[0])>0).length;
-    return `<button class="prod ${state.prod?.id===p.id?"on":""}" data-p="${p.id}"><div class="pimg">${p.ic}${p.isNew?'<span class="newtag">NEW</span>':""}</div><b>${p.name}</b><span class="price num">$${p.price.toLocaleString()} 起</span><span class="avail num">${n}/${STORES.length} 間門市有貨</span></button>`}).join("")||`<div class="empty" style="grid-column:1/-1">沒有符合的商品</div>`;
+    return `<button class="prod ${state.prod?.id===p.id?"on":""}" data-p="${p.id}"><div class="pimg">${p.ic}${p.isNew?'<span class="newtag">NEW</span>':""}</div><small class="pbrand">${esc(p.brand)}</small><b>${p.name}</b><span class="price num">$${p.price.toLocaleString()} 起</span><span class="avail num">${n}/${STORES.length} 間門市有貨</span></button>`}).join("")||`<div class="empty" style="grid-column:1/-1">沒有符合的商品</div>`;
   document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{const p=PRODUCTS.find(x=>x.id===b.dataset.p);state.prod=p;state.color=p.colors[0];state.cap=p.caps[0];if(state.layer)setLayer(null);renderProducts();$("#v-products").scrollTop=0});
   renderSpec();
 }
@@ -1415,7 +1577,7 @@ function openDetail(id){
         <div><span>預估等待</span><b>${qu*6}<small>分鐘</small></b><div class="bar"><i style="width:${Math.min(100,qu*6)}%"></i></div></div>
       </div>
       <div class="actions">
-        <a class="btn" href="${esc(navUrl)}" target="_blank" rel="noopener">${ICON.nav}導航</a>
+        <button class="btn" id="aNav">${ICON.nav}導航</button>
         <button class="btn dark" id="aTicket">${ICON.ticket}取號</button>
         <button class="btn primary" id="aBook">${ICON.cal}預約到店</button>
       </div>
@@ -1431,7 +1593,7 @@ function openDetail(id){
   $("#detail").classList.add("show");$("#dBody").scrollTop=0;
   $("#dBack").onclick=closeDetail;
   $("#dFav").onclick=e=>{const b=e.currentTarget;if(state.favs.has(id)){state.favs.delete(id);toast("已取消常用門市")}else{state.favs.add(id);toast("已加入常用門市")}b.style.color=state.favs.has(id)?"var(--brand)":""};
-  $("#aBook").onclick=()=>openExtBooking(s);$("#aTicket").onclick=()=>takeTicket(s);
+  $("#aBook").onclick=()=>openExtBooking(s);$("#aNav").onclick=()=>{if(isMobile())setSheet(150);Nav.start(s)};$("#aTicket").onclick=()=>takeTicket(s);
   document.querySelectorAll("[data-notify]").forEach(b=>b.onclick=()=>{b.textContent="✓ 已設定";b.disabled=true;toast(`到貨後將推播通知：${b.dataset.notify}`)});
   ensureSheet(SNAPS()[1]);MAP.flyTo(s.lat,s.lng,15);refreshMarkers();
 }
@@ -1588,10 +1750,20 @@ function stockSum(s,pid,cap,color){const p=PRODUCTS.find(x=>x.id===pid);if(!p)re
   return (color?[color]:p.colors).reduce((t,c)=>t+stockOf(s,pid,c,cap),0)}
 
 /* 內建圖層＋自訂熱鍵，全部轉成統一的「圖層物件」 */
+const HK_HIDE="twm_hk_hidden";
+let HK_HIDDEN=(()=>{try{return JSON.parse(localStorage.getItem(HK_HIDE)||"[]")}catch(e){return []}})();
+function saveHidden(){try{localStorage.setItem(HK_HIDE,JSON.stringify(HK_HIDDEN))}catch(e){}}
 function builtinLayers(){return [
-  {id:"queue",kind:"queue",name:"預約人潮",grad:GRAD.queue,glyph:GLYPH.people},
-  {id:"iphone",kind:"iphone",name:"iPhone 庫存",grad:GRAD.stock,glyph:GLYPH.phone},
-]}
+  {id:"queue",kind:"queue",name:"預約人潮",grad:GRAD.queue,glyph:GLYPH.people,builtin:true},
+  {id:"iphone",kind:"iphone",name:"iPhone 庫存",grad:GRAD.stock,glyph:GLYPH.phone,builtin:true},
+].filter(L=>!HK_HIDDEN.includes(L.id))}
+/* 取消熱點：自訂的直接刪除；內建的先隱藏，可在「自訂熱鍵」視窗恢復 */
+function removeHK(id){
+  const L=layerById(id);if(!L)return;
+  if(state.layer===id)setLayer(null);
+  if(L.builtin){HK_HIDDEN.push(id);saveHidden()}else{HOTKEYS=HOTKEYS.filter(x=>x.id!==id);saveHK()}
+  renderLayers();toast(`已取消熱點「${L.name}」`);
+}
 function allLayers(){return [...builtinLayers(),...HOTKEYS]}
 function layerById(id){return allLayers().find(l=>l.id===id)}
 function activeLayer(){
@@ -1612,14 +1784,20 @@ function dotHTML(L){
 }
 function renderLayers(){
   const ls=allLayers();
-  $("#layers").innerHTML=ls.map((L,i)=>`<button class="lyr ${state.layer===L.id?"on":""}" data-lyr="${L.id}" title="${esc(L.name)}（快捷鍵 ${i<9?i+1:""}）">
-      ${dotHTML(L)}<span class="lyr-lbl">${esc(L.name)}${i<9?`<span class="lyr-key">${i+1}</span>`:""}</span></button>`).join("")
+  const ed=$("#layers").classList.contains("editing");
+  $("#layers").innerHTML=ls.map((L,i)=>`<div class="lyr ${state.layer===L.id?"on":""}" data-lyr="${L.id}" role="button" tabindex="0" title="${esc(L.name)}">
+      ${dotHTML(L)}<span class="lyr-lbl">${esc(L.name)}</span><button class="lyr-x" data-lyrx="${L.id}" aria-label="取消熱點 ${esc(L.name)}" title="取消熱點">${ICON.x}</button></div>`).join("")
     +`<button class="lyr add" id="hkAdd" title="新增自訂熱鍵">${`<div class="lyr-dot">${GLYPH.plus}</div>`}<span class="lyr-lbl">自訂熱鍵</span></button>`
-    +`<button class="lyr-toggle" id="lyrToggle">${$("#layers").classList.contains("collapsed")?"顯示名稱":"只顯示圖示"}</button>`;
-  document.querySelectorAll("[data-lyr]").forEach(b=>b.onclick=()=>triggerHK(b.dataset.lyr));
+    +`<div class="lyr-tools"><button class="lyr-toggle" id="lyrToggle">${$("#layers").classList.contains("collapsed")?"顯示名稱":"只顯示圖示"}</button></div>`;
+  document.querySelectorAll("[data-lyr]").forEach(b=>{b.onclick=e=>{if(e.target.closest("[data-lyrx]"))return;triggerHK(b.dataset.lyr)};b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();triggerHK(b.dataset.lyr)}}});
+  document.querySelectorAll("[data-lyrx]").forEach(b=>b.onclick=e=>{e.stopPropagation();removeHK(b.dataset.lyrx)});
+  /* 觸控裝置沒有滑鼠移入：長按熱點即可顯示叉叉，點其他地方收起 */
+  document.querySelectorAll("[data-lyr]").forEach(b=>{let t;b.addEventListener("touchstart",()=>{t=setTimeout(()=>{$("#layers").classList.add("editing");b._lp=1},500)},{passive:true});
+    b.addEventListener("touchend",e=>{clearTimeout(t);if(b._lp){b._lp=0;e.preventDefault()}});b.addEventListener("touchmove",()=>clearTimeout(t),{passive:true})});
   $("#hkAdd").onclick=openHKModal;
   $("#lyrToggle").onclick=()=>{$("#layers").classList.toggle("collapsed");renderLayers()};
 }
+document.addEventListener("pointerdown",e=>{if(!e.target.closest("#layers"))$("#layers").classList.remove("editing")});/* layersOutside */
 function triggerHK(id){
   const L=layerById(id);if(!L)return;
   if(L.kind==="store"){gotoStoreHK(L);return}
@@ -1687,13 +1865,14 @@ function openHKModal(){
       ${body}
       <div class="lbl">名稱</div><input class="field" id="hkName" placeholder="${esc(auto)}" value="${esc(d.name)}" maxlength="24">
       <div class="row" style="margin-top:16px;flex-wrap:nowrap"><button class="btn" id="hkCancel" style="flex:1">關閉</button><button class="btn primary" id="hkSave" style="flex:2" ${type==="store"&&!storeOpts.length?"disabled":""}>新增熱鍵</button></div>
-      ${HOTKEYS.length?`<div class="lbl" style="margin-top:22px">已建立的熱鍵</div><div class="hk-list">${allLayers().map((L,i)=>`<div class="hk-row">${dotHTML(L)}<b>${i+1}．${esc(L.name)}</b>${i<2?`<span style="font-size:11.5px;color:var(--ink-3)">內建</span>`:`<button class="iconbtn" data-hkup="${L.id}" title="上移" ${i===2?"disabled style='opacity:.3'":""}>${I('<path d="m18 15-6-6-6 6"/>',16)}</button><button class="iconbtn" data-hkdel="${L.id}" title="刪除">${ICON.x}</button>`}</div>`).join("")}</div>`:""}`;
+      ${allLayers().length||HK_HIDDEN.length?`<div class="lbl" style="margin-top:22px">我的熱點</div>${HK_HIDDEN.length?`<button class="btn sm" id="hkRestore" style="margin-bottom:8px">恢復內建熱點（${HK_HIDDEN.length}）</button>`:""}<div class="hk-list">${allLayers().map((L,i)=>`<div class="hk-row">${dotHTML(L)}<b>${esc(L.name)}</b>${L.builtin?`<span style="font-size:11.5px;color:var(--ink-3)">內建</span><button class="iconbtn" data-hkdel="${L.id}" title="取消熱點">${ICON.x}</button>`:`<button class="iconbtn" data-hkup="${L.id}" title="上移" ${HOTKEYS[0]&&HOTKEYS[0].id===L.id?"disabled style='opacity:.3'":""}>${I('<path d="m18 15-6-6-6 6"/>',16)}</button><button class="iconbtn" data-hkdel="${L.id}" title="取消熱點">${ICON.x}</button>`}</div>`).join("")}</div>`:""}`;
     document.querySelectorAll("[data-hkt]").forEach(b=>b.onclick=()=>{type=b.dataset.hkt;d.name=$("#hkName").value;draw()});
     if($("#hkP"))$("#hkP").onchange=e=>{d.pid=e.target.value;d.name=$("#hkName").value;draw()};
     if($("#hkS"))$("#hkS").onchange=e=>{d.store=e.target.value;d.name=$("#hkName").value;draw()};
     document.querySelectorAll("[data-hkc]").forEach(b=>b.onclick=()=>{d.cap=b.dataset.hkc;d.name=$("#hkName").value;draw()});
     document.querySelectorAll("[data-hkcol]").forEach(b=>b.onclick=()=>{d.color=b.dataset.hkcol;d.name=$("#hkName").value;draw()});
-    document.querySelectorAll("[data-hkdel]").forEach(b=>b.onclick=()=>{HOTKEYS=HOTKEYS.filter(x=>x.id!==b.dataset.hkdel);if(state.layer===b.dataset.hkdel)setLayer(null);saveHK();renderLayers();d.name=$("#hkName").value;draw()});
+    document.querySelectorAll("[data-hkdel]").forEach(b=>b.onclick=()=>{removeHK(b.dataset.hkdel);d.name=$("#hkName").value;draw()});
+    if($("#hkRestore"))$("#hkRestore").onclick=()=>{HK_HIDDEN=[];saveHidden();renderLayers();d.name=$("#hkName").value;draw()};
     document.querySelectorAll("[data-hkup]").forEach(b=>b.onclick=()=>{const i=HOTKEYS.findIndex(x=>x.id===b.dataset.hkup);if(i>0){[HOTKEYS[i-1],HOTKEYS[i]]=[HOTKEYS[i],HOTKEYS[i-1]];saveHK();renderLayers();d.name=$("#hkName").value;draw()}});
     $("#hkCancel").onclick=()=>$("#mask").classList.remove("show");
     $("#hkSave").onclick=()=>{
