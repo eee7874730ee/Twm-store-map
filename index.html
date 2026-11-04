@@ -439,7 +439,9 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   .search{height:50px;border-radius:16px;padding:0 14px;max-width:none}
   .circle{width:50px;height:50px;border-radius:16px}
   #srcBtn{display:none}
-  .mapctl{top:auto;right:10px;bottom:calc(var(--sheet-h,46vh) + 76px);gap:8px;transition:bottom .25s}
+  .mapctl{top:auto;right:auto;left:10px;bottom:calc(var(--sheet-h,46vh) + 76px);gap:8px;transition:bottom .25s,opacity .2s}
+  body.sheet-tall .mapctl,body.navigating .mapctl,body:has(.layerbar.show) .mapctl{opacity:0;pointer-events:none}
+  body.sheet-full .layers,body.sheet-full .legend,body.sheet-full .areaBtn{opacity:0;pointer-events:none}
   .ctl{width:44px;height:44px}
   .zoom-group{display:none}
   .areaBtn{top:72px;left:50%}
@@ -452,7 +454,8 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   .lyr-dot .thumb-svg svg{width:32px}
   #lyrToggle{display:none}
   .layerbar{left:10px;right:62px;bottom:calc(var(--sheet-h,46vh) + 76px)}
-  .layers{overflow:visible;max-height:none}
+  .layers{overflow:visible;max-height:none;transition:opacity .2s}
+  .lyr.lyr-off,.layers .lyr-tools.lyr-off{display:none}
   .lb-card{padding:10px 12px;border-radius:18px}
   .lb-head{gap:8px}
   .lb-head .lyr-dot{display:none}
@@ -469,9 +472,9 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   .lb-ctl .chips .chip{height:28px;padding:0 10px;font-size:12px}
   .lb-range{font-size:12px}
   .lb-range span{min-width:70px}
-  .panel{left:0;right:0;width:auto;top:auto;bottom:calc(64px + env(safe-area-inset-bottom));height:var(--sheet-h,46vh);border-radius:24px 24px 0 0;transition:height .25s cubic-bezier(.2,.9,.3,1);box-shadow:0 -8px 30px rgba(0,0,0,.12)}
+  .panel{left:0;right:0;width:auto;top:auto;bottom:calc(64px + env(safe-area-inset-bottom));height:var(--sheet-h,30vh);border-radius:24px 24px 0 0;transition:height .25s cubic-bezier(.2,.9,.3,1);box-shadow:0 -8px 30px rgba(0,0,0,.12)}
   .panel.dragging{transition:none}
-  .grab{display:block;padding:10px 0 4px;cursor:grab;touch-action:none;flex:none}
+  .grab{display:block;padding:12px 0 8px;cursor:grab;touch-action:none;flex:none}
   .grab i{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto}
   .seg{display:none}
   .h-title{font-size:20px;margin-top:4px}
@@ -532,7 +535,7 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
     <div class="h-title">找門市</div>
     <div class="h-sub" id="storeCount"></div>
     <div class="pad" style="padding-top:6px;padding-bottom:4px">
-      <div class="row">
+      <div class="row" data-peek>
         <select class="sel" id="city"><option value="">全部縣市</option></select>
         <button class="chip" id="openNow"><span class="dot"></span>營業中</button>
         <select class="sel" id="sort" style="margin-left:auto"><option value="dist">距離最近</option><option value="queue">等候最短</option></select>
@@ -545,7 +548,7 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   <section class="view" id="v-products">
     <div class="h-title">商品現貨</div>
     <div class="h-sub">選擇商品與規格，地圖會標示各門市庫存</div>
-    <div class="pad" style="padding-top:6px;padding-bottom:6px"><div class="chips" id="catChips"></div><div class="chips brand-chips" id="brandChips"></div></div>
+    <div class="pad" style="padding-top:6px;padding-bottom:6px"><div class="chips" id="catChips" data-peek></div><div class="chips brand-chips" id="brandChips"></div></div>
     <div id="specBox"></div>
     <div id="prodStores"></div>
     <div class="section-t" id="prodTitle"></div>
@@ -555,7 +558,7 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   <section class="view" id="v-book">
     <div class="h-title">預約</div>
     <div class="h-sub">預約到店與線上取號</div>
-    <div class="book-hero"><svg class="gm" viewBox="-1.05 -1.05 2.1 2.1" id="bookGem"></svg><b>台灣大哥大 預約到店</b><span>選門市、服務項目與時段，到店免排隊。</span><a class="btn" id="bookOpen" target="_blank" rel="noopener">前往預約系統 ↗</a></div>
+    <div class="book-hero" data-peek><svg class="gm" viewBox="-1.05 -1.05 2.1 2.1" id="bookGem"></svg><b>台灣大哥大 預約到店</b><span>選門市、服務項目與時段，到店免排隊。</span><a class="btn" id="bookOpen" target="_blank" rel="noopener">前往預約系統 ↗</a></div>
     <div class="section-t">我的取號</div>
     <div id="bookList"></div>
   </section>
@@ -1260,7 +1263,7 @@ const GoogleMap={
 const Declutter={
   req(){if(this._raf||!MAP||!MAP.px)return;this._raf=requestAnimationFrame(()=>{this._raf=0;this.run()})},
   uiRects(mr){
-    return ["#panel",".brand",".search","#layers",".zoom-group","#layerbar .lb-card","#bnav"].map(q=>document.querySelector(q)).filter(e=>e&&e.offsetParent!==null)
+    return ["#panel",".brand",".search","#layers",".zoom-group",".mapctl","#layerbar .lb-card","#bnav"].map(q=>document.querySelector(q)).filter(e=>e&&e.offsetParent!==null)
       .map(e=>{const r=e.getBoundingClientRect();return {l:r.left-mr.left-10,t:r.top-mr.top-10,r:r.right-mr.left+10,b:r.bottom-mr.top+10}}).filter(r=>r.r>r.l&&r.b>r.t);
   },
   run(){
@@ -1413,15 +1416,49 @@ async function keywordSearch(q){
 
 /* ================= 手機抽屜 ================= */
 const panel=$("#panel");
-const SNAPS=()=>[150,Math.round(innerHeight*.46),innerHeight-64-80];
-function setSheet(h){h=Math.max(120,Math.min(innerHeight-64-60,h));document.documentElement.style.setProperty("--sheet-h",h+"px");if(Spotlight.m)Spotlight.req()}
-function sheetH(){return panel.getBoundingClientRect().height}
+/* 手機抽屜：三段高度（收合／半開／全開）。收合高度依內容計算，剛好停在篩選列下方，不會切到半個元件 */
+function peekH(){
+  const v=document.querySelector(".view.active"),pr=panel.getBoundingClientRect();
+  const el=(v&&v.querySelector("[data-peek]"))||null;if(!el)return 150;
+  const r=el.getBoundingClientRect(),nx=el.nextElementSibling||(el.parentElement&&el.parentElement.nextElementSibling),gap=nx?nx.getBoundingClientRect().top-r.bottom:16;
+  return Math.round(r.bottom-pr.top+(v?v.scrollTop:0)+Math.max(6,Math.min(14,gap-2)));
+}
+const SNAPS=()=>{const full=innerHeight-64-80,pk=Math.min(Math.max(120,peekH()),full-120);return [pk,Math.max(pk+120,Math.round(innerHeight*.52)),full]};
+function setSheet(h){h=Math.max(110,Math.min(innerHeight-64-60,h));document.documentElement.style.setProperty("--sheet-h",h+"px");
+  const free=innerHeight-64-h;document.body.classList.toggle("sheet-tall",free<330);document.body.classList.toggle("sheet-full",free<200);
+  fitLayers(h);if(Spotlight.m)Spotlight.req();if(window.RoadFocus&&RoadFocus.el)RoadFocus.req()}
+/* 熱點按鈕只顯示放得下的數量，不被抽屜蓋住、也不會被切一半 */
+function fitLayers(h){const L=$("#layers");if(!L)return;const items=[...L.children];if(!isMobile()){items.forEach(x=>x.classList.remove("lyr-off"));return}
+  let room=innerHeight-64-(h??sheetH())-72-14;items.forEach(x=>{x.classList.remove("lyr-off");const need=(x.offsetHeight||44)+7;if(room>=need)room-=need;else x.classList.add("lyr-off")})}
+function sheetH(){return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sheet-h"))||panel.getBoundingClientRect().height}
 function ensureSheet(min){if(isMobile()&&sheetH()<min)setSheet(min)}
-(()=>{let y0,h0,moved;const g=$("#grab");
-  g.addEventListener("pointerdown",e=>{y0=e.clientY;h0=sheetH();moved=false;panel.classList.add("dragging");g.setPointerCapture(e.pointerId)});
-  g.addEventListener("pointermove",e=>{if(y0==null)return;const dy=y0-e.clientY;if(Math.abs(dy)>4)moved=true;setSheet(h0+dy)});
-  g.addEventListener("pointerup",()=>{panel.classList.remove("dragging");const h=sheetH(),s=SNAPS();
-    let t=moved?s.reduce((a,b)=>Math.abs(b-h)<Math.abs(a-h)?b:a):(s.find(v=>v>h+10)??s[0]);setSheet(t);y0=null});
+function snapTo(i){const s=SNAPS();setSheet(s[i]);if(i===0){const v=document.querySelector(".view.active");if(v)v.scrollTop=0}}
+/* 整個抽屜都能拖：內容在頂端時往上滑＝展開抽屜、往下滑＝收合；抽屜全開後才捲動內容 */
+(()=>{let y0,x0,h0,mode=null,sc=null,lastY,lastT,vel=0;
+  const scroller=t=>t.closest(".d-body")||t.closest(".view.active");
+  panel.addEventListener("touchstart",e=>{if(!isMobile()||e.touches.length>1)return;const t=e.touches[0];
+    y0=lastY=t.clientY;x0=t.clientX;lastT=performance.now();h0=sheetH();mode=null;vel=0;sc=scroller(e.target)},{passive:true});
+  panel.addEventListener("touchmove",e=>{if(y0==null||!isMobile())return;const t=e.touches[0],dy=y0-t.clientY,dx=t.clientX-x0;
+    if(mode===null){if(Math.abs(dy)<6&&Math.abs(dx)<6)return;
+      const full=SNAPS()[2],onGrab=!!e.target.closest("#grab"),atTop=!sc||sc.scrollTop<=0;
+      if(Math.abs(dx)>Math.abs(dy)&&!onGrab)mode="native";
+      else if(onGrab||(dy>0&&h0<full-4)||(dy<0&&atTop))mode="sheet";else mode="native";
+      if(mode==="sheet")panel.classList.add("dragging")}
+    if(mode!=="sheet")return;e.preventDefault();
+    const now=performance.now();vel=(lastY-t.clientY)/Math.max(1,now-lastT);lastY=t.clientY;lastT=now;setSheet(h0+dy)},{passive:false});
+  const end=e=>{if(y0==null)return;const wasTap=mode===null&&e.target&&e.target.closest&&e.target.closest("#grab");
+    if(mode==="sheet"){panel.classList.remove("dragging");const h=sheetH(),s=SNAPS();let i;
+      if(Math.abs(vel)>.35){const dir=vel>0?1:-1;i=dir>0?s.findIndex(v=>v>h+8):[...s].reverse().findIndex(v=>v<h-8);if(dir<0&&i>=0)i=s.length-1-i}
+      if(i==null||i<0)i=s.reduce((b,v,k)=>Math.abs(v-h)<Math.abs(s[b]-h)?k:b,0);snapTo(i)}
+    else if(wasTap){const s=SNAPS(),h=sheetH(),i=s.findIndex(v=>v>h+10);snapTo(i<0?0:i)}
+    y0=null;mode=null};
+  panel.addEventListener("touchend",end);panel.addEventListener("touchcancel",end);
+  /* 電腦上用滑鼠拖拉把手（模擬手機尺寸時） */
+  const g=$("#grab");let my=null,mh=0;
+  g.addEventListener("mousedown",e=>{my=e.clientY;mh=sheetH();panel.classList.add("dragging");e.preventDefault()});
+  addEventListener("mousemove",e=>{if(my!=null)setSheet(mh+my-e.clientY)});
+  addEventListener("mouseup",()=>{if(my==null)return;my=null;panel.classList.remove("dragging");const h=sheetH(),s=SNAPS();snapTo(s.reduce((b,v,k)=>Math.abs(v-h)<Math.abs(s[b]-h)?k:b,0))});
+  addEventListener("resize",()=>{if(isMobile())setSheet(Math.min(sheetH(),SNAPS()[2]))});
 })();
 
 /* ================= 分頁 ================= */
@@ -1605,7 +1642,7 @@ function renderStores(){
   $("#storeCount").textContent=SOURCE==="google"?`已從 Google 地圖載入 ${STORES.length} 間 · 符合 ${list.length} 間`:`共 ${list.length} 間門市（示意資料）`;
   let empty=`<div class="empty">${emptyArt()}找不到符合條件的門市<br>試著清除篩選條件</div>`;
   if(SOURCE==="google"&&!STORES.length)empty=`<div class="empty">${emptyArt()}移動或縮放地圖<br>附近門市會自動出現</div>`;
-  $("#storeList").innerHTML=(list.length?list.map(s=>storeRow(s)).join(""):empty)+styleGallery();
+  $("#storeList").innerHTML=list.length?list.map(s=>storeRow(s)).join(""):empty;
   bindRows("#storeList");refreshMarkers();
 }
 function bindRows(sel){document.querySelectorAll(sel+" .store").forEach(r=>r.onclick=()=>openDetail(+r.dataset.id))}
@@ -1903,6 +1940,7 @@ function renderLayers(){
   document.querySelectorAll("[data-lyr]").forEach(b=>{let t;b.addEventListener("touchstart",()=>{t=setTimeout(()=>{$("#layers").classList.add("editing");b._lp=1},500)},{passive:true});
     b.addEventListener("touchend",e=>{clearTimeout(t);if(b._lp){b._lp=0;e.preventDefault()}});b.addEventListener("touchmove",()=>clearTimeout(t),{passive:true})});
   $("#hkAdd").onclick=openHKModal;
+  fitLayers();
   $("#lyrToggle").onclick=()=>{$("#layers").classList.toggle("collapsed");renderLayers()};
 }
 document.addEventListener("pointerdown",e=>{if(!e.target.closest("#layers"))$("#layers").classList.remove("editing")});/* layersOutside */
@@ -2006,6 +2044,7 @@ document.addEventListener("keydown",e=>{
 
 /* ================= 啟動 ================= */
 function ready(){
+  if(isMobile())requestAnimationFrame(()=>snapTo(0));
   if(!Search._init){Search._init=1;Search.init()}
   const b=$("#srcBadge");
   if(SOURCE==="google"){b.textContent="Google 地圖 · 庫存示意";b.classList.add("g")}else{b.textContent="示意資料";b.classList.remove("g")}
