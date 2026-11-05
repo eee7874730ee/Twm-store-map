@@ -369,6 +369,27 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
 .spin svg{filter:drop-shadow(0 4px 6px rgba(0,0,0,.25))}
 .spin-l{background:var(--ink);color:#fff;font:700 12px var(--font);padding:5px 10px;border-radius:10px;margin-bottom:4px;white-space:nowrap;box-shadow:var(--shadow-sm)}
 @keyframes pinDrop{from{opacity:0;translate:0 -24px}}
+
+/* 叫號 APP 內嵌 */
+#v-book.active{display:flex;flex-direction:column}
+.q-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-right:18px}
+.q-head .h-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.q-tools{display:flex;gap:6px;margin-top:18px}
+.btn.sm{height:34px;padding:0 12px;font-size:13px;border-radius:11px;text-decoration:none}
+.q-wrap{position:relative;flex:1 1 auto;min-height:460px;margin:4px 14px 6px;border-radius:18px;overflow:hidden;background:var(--card-2);box-shadow:inset 0 0 0 1px var(--line)}
+.q-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+.q-load{position:absolute;inset:0;display:none;place-items:center;font-size:13px;font-weight:600;color:var(--ink-3);background:var(--card-2)}
+.q-wrap.loading .q-load{display:grid}
+.q-hint{font-size:12px;color:var(--ink-3);padding:0 18px 14px}.q-hint a{color:var(--brand-600);font-weight:700}
+.q-wrap.big{position:fixed;left:50%;top:50%;width:min(980px,94vw);height:min(88vh,900px);transform:translate(-50%,-50%);margin:0;z-index:1201;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.q-back{position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:1200;display:none}.q-back.show{display:block}
+body.q-big .panel{z-index:1201}
+.q-wrap .q-x{position:absolute;top:-14px;right:-14px;width:36px;height:36px;border-radius:50%;background:#fff;color:var(--ink);font-size:15px;font-weight:800;display:none;place-items:center;z-index:2;box-shadow:var(--shadow)}
+.q-wrap.big{overflow:visible}.q-wrap.big iframe{border-radius:18px}
+.q-wrap.big .q-x{display:grid}
+#v-book [hidden]{display:none!important}
+.q-hint{margin-top:auto}
+@media (max-width:860px){.q-wrap{min-height:0;margin:4px 10px 6px}.q-head .h-sub{max-width:200px}#qBig{display:none}}
 /* 底部導覽（手機） */
 .bnav{display:none}
 
@@ -556,11 +577,11 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
   </section>
 
   <section class="view" id="v-book">
-    <div class="h-title">預約</div>
-    <div class="h-sub">預約到店與線上取號</div>
-    <div class="book-hero" data-peek><svg class="gm" viewBox="-1.05 -1.05 2.1 2.1" id="bookGem"></svg><b>台灣大哥大 預約到店</b><span>選門市、服務項目與時段，到店免排隊。</span><a class="btn" id="bookOpen" target="_blank" rel="noopener">前往預約系統 ↗</a></div>
-    <div class="section-t">我的取號</div>
-    <div id="bookList"></div>
+    <div class="q-head" data-peek><div><div class="h-title">預約．取號</div><div class="h-sub" id="qStore">未指定門市</div></div>
+      <div class="q-tools"><button class="btn sm" id="qBig" type="button">放大</button><a class="btn sm" id="qOpen" target="_blank" rel="noopener" title="在新分頁開啟">↗</a></div></div>
+    <div class="q-wrap loading" id="qWrap"><iframe id="qFrame" title="叫號系統" allow="geolocation; clipboard-write; camera" referrerpolicy="no-referrer-when-downgrade"></iframe><div class="q-load">叫號系統載入中…</div><button class="q-x" id="qX" type="button" aria-label="縮小">✕</button></div>
+    <div class="q-hint">畫面沒出現？<a id="qOpen2" target="_blank" rel="noopener">在新分頁開啟叫號系統</a></div>
+    <div id="bookList" hidden></div><a id="bookOpen" hidden></a><svg id="bookGem" hidden></svg>
   </section>
 
   <section class="view" id="v-more">
@@ -576,6 +597,7 @@ body.navigating .layerbar,body.navigating .legend{display:none!important}
 <nav class="bnav" id="bnav"></nav>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div class="navcard" id="navcard" role="dialog" aria-label="導航"></div>
+<div class="q-back" id="qBack"></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -1479,7 +1501,7 @@ function renderTabs(){
 }
 function setTab(t){state.tab=t;closeDetail();
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="v-"+t));
-  renderTabs();refreshMarkers();if(t==="book")renderBookings();ensureSheet(SNAPS()[1]);
+  renderTabs();refreshMarkers();if(t==="book"){renderBookings();Queue.show(state.active!=null?STORES.find(x=>x.id===state.active):null)}ensureSheet(SNAPS()[1]);
 }
 
 /* ================= 標記 ================= */
@@ -1620,6 +1642,35 @@ const Search={
   clearRef(){state.ref=null;MAP.dropPin&&MAP.dropPin(null)}
 };
 
+/* ================= 叫號 APP 內嵌（同事的網頁直接在「預約」分頁裡使用，不跳出） =================
+   優先使用同一個網站裡的 queue.html（把同事的網頁存成 queue.html 放進 GitHub 同一個資料夾即可，最穩定）；
+   沒有 queue.html 時改嵌入原本的 Artifact 連結。
+   會把目前門市資訊帶進網址：?store=…&addr=…&lat=…&lng=…&placeId=…，
+   並在載入後用 postMessage 傳 {type:"twm-store",store:{…}}，同事的網頁可依需要讀取。 */
+const QUEUE_APP={local:"queue.html",remote:"https://claude.ai/artifact/6JQfSHjCgkwoJpQamPZcva"};
+const Queue={
+  base:null,store:null,loaded:false,
+  async resolve(){if(this.base)return this.base;
+    /* 直接用電腦打開檔案（file://）時瀏覽器不讓網頁檢查同資料夾的檔案，直接使用旁邊的 queue.html */
+    if(location.protocol==="file:"){this.base=QUEUE_APP.local;return this.base}
+    try{const r=await fetch(QUEUE_APP.local,{method:"HEAD",cache:"no-store"});this.base=r.ok?QUEUE_APP.local:QUEUE_APP.remote}
+    catch(e){this.base=QUEUE_APP.local}
+    return this.base},
+  url(s){const u=this.base||QUEUE_APP.remote;if(!s)return u;const q=new URLSearchParams({store:s.name,addr:s.addr||"",lat:s.lat,lng:s.lng});if(s.placeId)q.set("placeId",s.placeId);return u+(u.includes("?")?"&":"?")+q},
+  async show(s){
+    if(s)this.store=s;await this.resolve();
+    const f=$("#qFrame"),want=this.url(this.store);
+    if(!this.loaded||f.dataset.src!==want){this.loaded=true;f.dataset.src=want;$("#qWrap").classList.add("loading");f.src=want}
+    $("#qOpen").href=want;
+    $("#qStore").textContent=this.store?`📍 ${this.store.name}`:"未指定門市（可在叫號頁面中選擇）";
+  },
+  onload(){$("#qWrap").classList.remove("loading");
+    try{$("#qFrame").contentWindow.postMessage({type:"twm-store",store:this.store&&{name:this.store.name,addr:this.store.addr,lat:this.store.lat,lng:this.store.lng,placeId:this.store.placeId||null}},"*")}catch(e){}},
+  big(on){document.body.classList.toggle("q-big",on);$("#qWrap").classList.toggle("big",on);$("#qBack").classList.toggle("show",on);$("#qBig").textContent=on?"縮小":"放大"}
+};
+/* 從門市頁「取號／預約到店」直接帶入門市 */
+function openQueue(s){setTab("book");Queue.show(s);if(isMobile())setTimeout(()=>snapTo(2),50)}
+
 /* ================= 門市列表 ================= */
 function filteredStores(){
   const q=state.q.trim().toLowerCase();
@@ -1738,7 +1789,7 @@ function openDetail(id){
   $("#detail").classList.add("show");$("#dBody").scrollTop=0;
   $("#dBack").onclick=closeDetail;
   $("#dFav").onclick=e=>{const b=e.currentTarget;if(state.favs.has(id)){state.favs.delete(id);toast("已取消常用門市")}else{state.favs.add(id);toast("已加入常用門市")}b.style.color=state.favs.has(id)?"var(--brand)":""};
-  $("#aBook").onclick=()=>openExtBooking(s);$("#aNav").onclick=()=>{if(isMobile())setSheet(150);Nav.start(s)};$("#aTicket").onclick=()=>takeTicket(s);
+  $("#aBook").onclick=()=>openQueue(s);$("#aNav").onclick=()=>{if(isMobile())setSheet(150);Nav.start(s)};$("#aTicket").onclick=()=>openQueue(s);
   document.querySelectorAll("[data-notify]").forEach(b=>b.onclick=()=>{b.textContent="✓ 已設定";b.disabled=true;toast(`到貨後將推播通知：${b.dataset.notify}`)});
   ensureSheet(SNAPS()[1]);MAP.flyTo(s.lat,s.lng,15);refreshMarkers();
 }
@@ -2044,6 +2095,8 @@ document.addEventListener("keydown",e=>{
 
 /* ================= 啟動 ================= */
 function ready(){
+  if(!Queue._init){Queue._init=1;$("#qFrame").onload=()=>Queue.onload();$("#qBig").onclick=()=>Queue.big(!$("#qWrap").classList.contains("big"));$("#qBack").onclick=()=>Queue.big(false);$("#qX").onclick=()=>Queue.big(false);addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("q-big"))Queue.big(false)});
+    const o=$("#qOpen2");o.onclick=e=>{o.href=$("#qOpen").href||QUEUE_APP.remote}}
   if(isMobile())requestAnimationFrame(()=>snapTo(0));
   if(!Search._init){Search._init=1;Search.init()}
   const b=$("#srcBadge");
