@@ -390,6 +390,12 @@ body.q-big .panel{z-index:1201}
 #v-book [hidden]{display:none!important}
 .q-hint{margin-top:auto}
 @media (max-width:860px){.q-wrap{min-height:0;margin:4px 10px 6px}.q-head .h-sub{max-width:200px}#qBig{display:none}}
+
+/* 地圖錯誤說明 */
+#mapErr{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:900;background:#2B2A33;color:#fff;border-radius:16px;padding:12px 42px 12px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;max-width:min(460px,calc(100vw - 24px));font-size:13px}
+#mapErr b{font-size:14px}#mapErr code{font-size:12px;color:#FFB27A}#mapErr small{opacity:.65}
+#mapErr button{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;color:#fff;background:rgba(255,255,255,.12)}
+@media (max-width:860px){#mapErr{bottom:auto;top:76px}}
 /* 底部導覽（手機） */
 .bnav{display:none}
 
@@ -2112,14 +2118,20 @@ function useDemo(msg){
   try{LeafletMap.init()}catch(e){console.error(e);MAP={upsert(){},setMe(){},flyTo(){},fit(){},zoom(){},resize(){}};document.body.classList.add("demo");$("#map").innerHTML='<div class="empty" style="padding-top:30vh">地圖載入失敗，請檢查網路連線</div>'}
   ready();if(msg)setTimeout(()=>toast(msg),400);
 }
+/* 地圖失敗時固定顯示的錯誤說明（可截圖回報） */
+function showMapErr(why,code){let d=document.getElementById("mapErr");if(!d){d=document.createElement("div");d.id="mapErr";document.body.appendChild(d)}
+  d.innerHTML=`<b>Google 地圖無法載入</b><span>${esc(why)}</span>${code?`<code>${esc(code)}</code>`:""}<small>目前顯示示意資料</small><button type="button" aria-label="關閉">✕</button>`;d.querySelector("button").onclick=()=>d.remove()}
 function boot(){
   if(!API_KEY){useDemo();return}
-  window.gm_authFailure=()=>useDemo("Google 金鑰無效或未啟用所需 API，已改用示意資料");
+  /* 抓取 Google 地圖在 console 印出的錯誤代碼，失敗時直接顯示在畫面上，方便排查 */
+  let gErr="";const GERR={RefererNotAllowedMapError:`這個網址（${location.origin}）不在 API 金鑰的「網站限制」清單中`,ApiNotActivatedMapError:"Google Cloud 尚未啟用 Maps JavaScript API",ApiTargetBlockedMapError:"API 金鑰的「API 限制」沒有勾選 Maps JavaScript API",InvalidKeyMapError:"API 金鑰無效",MissingKeyMapError:"缺少 API 金鑰",BillingNotEnabledMapError:"Google Cloud 專案尚未開啟帳單",ExpiredKeyMapError:"API 金鑰已過期",DeletedApiProjectMapError:"API 金鑰所屬的專案已刪除",OverQuotaMapError:"已超過使用額度"};
+  for(const k of ["error","warn"]){const o=console[k].bind(console);console[k]=(...a)=>{try{const m=String(a[0]||"").match(/Google Maps JavaScript API (?:error|warning): (\w+)/);if(m&&!gErr)gErr=m[1]}catch(e){}o(...a)}}
+  window.gm_authFailure=()=>setTimeout(()=>{const why=GERR[gErr]||"Google 金鑰無效或未啟用所需 API";showMapErr(why,gErr);useDemo("Google 地圖載入失敗："+why)},50);
   window.__gInit=async()=>{try{SOURCE="google";MAP=GoogleMap;STORES=[];await GoogleMap.init();ready()}catch(e){console.error(e);useDemo("Google 地圖載入失敗，已改用示意資料")}};
   const sc=document.createElement("script");
   sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(API_KEY)}&v=weekly&language=zh-TW&region=TW&loading=async&callback=__gInit`;
   const inFrame=(()=>{try{return window.top!==window.self}catch(e){return true}})();
-  sc.async=true;sc.onerror=()=>useDemo(inFrame?"這個預覽視窗擋住了 Google 地圖，請下載檔案後用 Chrome 開啟":"無法連線到 Google 地圖（請檢查網路或擋廣告外掛），已改用示意資料");
+  sc.async=true;sc.onerror=()=>{showMapErr(inFrame?"預覽視窗擋住了 Google 地圖":"無法連線到 Google 地圖（網路、公司防火牆或擋廣告外掛）","");useDemo(inFrame?"這個預覽視窗擋住了 Google 地圖，請下載檔案後用 Chrome 開啟":"無法連線到 Google 地圖（請檢查網路或擋廣告外掛），已改用示意資料")};
   document.head.appendChild(sc);
 }
 boot();
